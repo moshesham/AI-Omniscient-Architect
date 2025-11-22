@@ -48,6 +48,78 @@ curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull codellama:7b-instruct
 ```
 
+## Docker Deployment
+
+The Omniscient Architect can be easily deployed using Docker for consistent environments and simplified setup.
+
+### Prerequisites
+- Docker and Docker Compose installed on your system
+- At least 8GB RAM recommended for AI model inference
+
+### Quick Start with Docker Compose
+
+```bash
+# Clone the repository
+git clone https://github.com/moshesham/AI-Omniscient-Architect.git
+cd AI-Omniscient-Architect
+
+# Start the application with Ollama
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+```
+
+The application will be available at `http://localhost:8501`
+
+### Manual Docker Setup
+
+If you prefer to run components separately:
+
+```bash
+# 1. Start Ollama service
+docker run -d --name ollama -p 11434:11434 ollama/ollama
+
+# 2. Pull the AI model
+docker exec ollama ollama pull codellama:7b-instruct
+
+# 3. Build and run the application
+docker build -t omniscient-architect .
+docker run -d --name omniscient-architect-app \
+  -p 8501:8501 \
+  --link ollama \
+  -e OLLAMA_HOST=http://ollama:11434 \
+  omniscient-architect
+```
+
+### Docker Commands
+
+```bash
+# Stop all services
+docker-compose down
+
+# Rebuild after code changes
+docker-compose up --build
+
+# View running containers
+docker-compose ps
+
+# Access container logs
+docker-compose logs app
+docker-compose logs ollama
+
+# Clean up (removes volumes too)
+docker-compose down -v
+```
+
+### Configuration
+
+The Docker setup includes:
+- **Ollama Container**: Runs the AI inference service on port 11434
+- **App Container**: Runs the Streamlit web interface on port 8501
+- **Volume Persistence**: AI models are cached in a Docker volume
+- **Health Checks**: Automatic container health monitoring
+
 ## Usage
 
 ### Command Line Interface
