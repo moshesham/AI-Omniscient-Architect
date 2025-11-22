@@ -1,0 +1,36 @@
+# Core AI and LLM dependencies
+langchain>=0.1.0
+langchain-community>=0.0.10
+langchain-core>=0.1.0
+ollama>=0.2.0
+
+# Web framework for future UI
+streamlit>=1.28.0
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Data processing and utilities
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+
+# Development and testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.7.0
+
+# GitHub integration (for future phases)
+PyGitHub>=2.1.0
+
+# Code analysis
+tree-sitter>=0.20.0
+tree-sitter-python>=0.20.0
+
+# Logging and monitoring
+structlog>=23.2.0
+rich>=13.7.0
+
+# Optional: For advanced features
+numpy>=1.24.0
+pandas>=2.1.0

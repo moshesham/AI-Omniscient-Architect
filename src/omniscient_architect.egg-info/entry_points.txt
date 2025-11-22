@@ -1,0 +1,2 @@
+[console_scripts]
+omniscient-architect = omniscient_architect.cli:main
