@@ -20,7 +20,7 @@ except ImportError:
 try:
     from .agents import (
         BaseAIAgent, ArchitectureAgent, EfficiencyAgent,
-        ReliabilityAgent, AlignmentAgent
+        ReliabilityAgent, AlignmentAgent, GitHubRepositoryAgent
     )
     _agents_available = True
 except ImportError:
@@ -38,6 +38,12 @@ try:
 except ImportError:
     _cli_available = False
 
+try:
+    from .github_client import GitHubClient, create_repository_info_from_github
+    _github_available = True
+except ImportError:
+    _github_available = False
+
 # Build __all__ based on what's available
 __all__ = [
     "FileAnalysis", "AgentFindings", "ReviewResult",
@@ -50,7 +56,7 @@ if _reporting_available:
 if _agents_available:
     __all__.extend([
         "BaseAIAgent", "ArchitectureAgent", "EfficiencyAgent",
-        "ReliabilityAgent", "AlignmentAgent"
+        "ReliabilityAgent", "AlignmentAgent", "GitHubRepositoryAgent"
     ])
 
 if _analysis_available:
@@ -58,3 +64,6 @@ if _analysis_available:
 
 if _cli_available:
     __all__.append("CLI")
+
+if _github_available:
+    __all__.extend(["GitHubClient", "create_repository_info_from_github"])

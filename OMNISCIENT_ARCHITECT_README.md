@@ -28,19 +28,29 @@ The system simulates four specialist sub-agents:
 
 ## Installation
 
-No installation required! The tool is a standalone Python script with no external dependencies.
+### Requirements
+- Python 3.7+
+- GitHub token (optional, for higher rate limits)
+- Ollama (for AI analysis)
 
+### Install Dependencies
 ```bash
-# Make executable (Unix/Linux/Mac)
-chmod +x omniscient_architect.py
+# Install required packages
+pip install langchain ollama httpx structlog rich streamlit PyGitHub
+```
 
-# Or run directly with Python
-python omniscient_architect.py <path-to-repo>
+### Setup Ollama (for AI Analysis)
+```bash
+# Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Pull a code analysis model
+ollama pull codellama:7b-instruct
 ```
 
 ## Usage
 
-### Basic Analysis
+### Command Line Interface
 
 ```bash
 # Analyze the current directory
@@ -49,6 +59,34 @@ python omniscient_architect.py .
 # Analyze a specific repository
 python omniscient_architect.py /path/to/repository
 ```
+
+### Web Interface (Recommended)
+
+The web interface provides an intuitive way to analyze GitHub repositories with a modern UI.
+
+#### Quick Start
+```bash
+# Run the web application
+python run_web_app.py
+
+# Or directly with streamlit
+streamlit run web_app.py
+```
+
+#### Features
+- **Repository Input**: Enter GitHub repository URLs for analysis
+- **Project Objectives**: Provide context for more relevant analysis
+- **Real-time Analysis**: Watch AI agents analyze your code in real-time
+- **Comprehensive Reports**: View detailed findings with confidence scores
+- **Configuration Options**: Customize analysis depth and AI models
+
+#### Web Interface Usage
+1. **Start the App**: Run `python run_web_app.py`
+2. **Configure Settings**: Set your GitHub token and analysis preferences in the sidebar
+3. **Enter Repository**: Paste a GitHub repository URL
+4. **Add Context**: Optionally describe the project's objectives
+5. **Analyze**: Click "Analyze Repository" to start the AI analysis
+6. **Review Results**: Explore the comprehensive analysis report
 
 ### With Project Objective
 

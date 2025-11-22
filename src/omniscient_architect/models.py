@@ -41,7 +41,7 @@ class ReviewResult:
 @dataclass
 class RepositoryInfo:
     """Information about a repository to analyze."""
-    path: Path
+    path: Optional[Path]
     url: Optional[str] = None
     branch: str = "main"
     is_remote: bool = False

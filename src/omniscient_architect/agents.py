@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from .models import AgentFindings, FileAnalysis, RepositoryInfo
 
@@ -293,6 +293,128 @@ Assess whether the code delivers on the promised objectives and identify gaps.""
         """Analyze objective alignment."""
         context = self._prepare_files_context(files)
         files_info = f"Total files: {len(files)}, Objective alignment analysis"
+
+        response = await self._call_llm(context, repo_info.project_objective, files_info)
+
+        return AgentFindings(
+            agent_name=self.name,
+            findings=response.findings,
+            confidence=response.confidence,
+            reasoning=response.reasoning
+        )
+
+
+class GitHubRepositoryAgent(BaseAIAgent):
+    """Agent specialized in GitHub repository analysis and metadata assessment."""
+
+    def __init__(self, llm: BaseLanguageModel):
+        super().__init__(
+            llm=llm,
+            name="GitHub Repository Analyst",
+            description="Analyzes GitHub repository structure, metadata, and community health",
+            analysis_focus="Repository health, community engagement, and project maturity"
+        )
+
+    def _get_prompt_template(self) -> str:
+        return """
+You are a GitHub Repository Analysis Expert. Analyze the provided repository information and provide insights about:
+
+CONTEXT:
+{context}
+
+PROJECT OBJECTIVE:
+{objective}
+
+REPOSITORY INFORMATION:
+{files_info}
+
+Based on the repository metadata, structure, and content, provide a comprehensive analysis covering:
+
+1. **Repository Health & Maturity**
+   - Code quality indicators
+   - Documentation completeness
+   - Testing coverage and practices
+   - CI/CD pipeline effectiveness
+
+2. **Community & Collaboration**
+   - Open source friendliness
+   - Contribution guidelines
+   - Issue and PR management
+   - Community engagement metrics
+
+3. **Technical Architecture**
+   - Technology stack assessment
+   - Code organization and structure
+   - Dependencies and security
+   - Scalability and maintainability
+
+4. **Project Viability**
+   - Alignment with stated objectives
+   - Market fit and relevance
+   - Development velocity
+   - Long-term sustainability
+
+Provide specific, actionable findings with confidence scores and detailed reasoning.
+{format_instructions}
+"""
+
+    async def analyze(
+        self,
+        files: List[FileAnalysis],
+        repo_info: RepositoryInfo
+    ) -> AgentFindings:
+        """Analyze GitHub repository health and structure."""
+        # Prepare enhanced context with repository metadata
+        context_parts = []
+
+        # Add repository structure information
+        context_parts.append("REPOSITORY STRUCTURE ANALYSIS:")
+        context_parts.append(f"- Total files analyzed: {len(files)}")
+
+        # Language distribution
+        languages = {}
+        total_size = 0
+        for file in files:
+            languages[file.language] = languages.get(file.language, 0) + 1
+            total_size += file.size
+
+        context_parts.append(f"- Total codebase size: {total_size:,} bytes")
+        context_parts.append("- Language distribution:")
+        for lang, count in sorted(languages.items(), key=lambda x: x[1], reverse=True):
+            context_parts.append(f"  {lang}: {count} files")
+
+        # File type analysis
+        extensions = {}
+        for file in files:
+            ext = file.path.split('.')[-1] if '.' in file.path else 'no_extension'
+            extensions[ext] = extensions.get(ext, 0) + 1
+
+        context_parts.append("- File extensions:")
+        for ext, count in sorted(extensions.items(), key=lambda x: x[1], reverse=True)[:10]:
+            context_parts.append(f"  .{ext}: {count} files")
+
+        # Quality indicators
+        test_files = [f for f in files if 'test' in f.path.lower() or 'spec' in f.path.lower()]
+        config_files = [f for f in files if any(x in f.path.lower() for x in ['config', 'setup', 'requirements', 'package'])]
+        doc_files = [f for f in files if any(x in f.path.lower() for x in ['readme', 'doc', 'docs', 'wiki', '.md'])]
+
+        context_parts.append(f"- Test files: {len(test_files)}")
+        context_parts.append(f"- Configuration files: {len(config_files)}")
+        context_parts.append(f"- Documentation files: {len(doc_files)}")
+
+        # Issue analysis summary
+        issues_found = sum(len(f.issues) for f in files)
+        context_parts.append(f"- Total issues identified: {issues_found}")
+
+        context = "\n".join(context_parts)
+        files_info = f"""
+Repository Analysis Summary:
+- Files: {len(files)}
+- Languages: {len(languages)}
+- Test Coverage: {len(test_files)} test files
+- Documentation: {len(doc_files)} doc files
+- Issues Found: {issues_found}
+"""
 
         response = await self._call_llm(context, repo_info.project_objective, files_info)
 
