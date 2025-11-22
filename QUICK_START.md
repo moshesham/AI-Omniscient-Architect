@@ -6,7 +6,19 @@ The **Omniscient Architect** is your AI-powered code review assistant. Think of 
 
 ## 5-Minute Quick Start
 
-### 1. Run Your First Analysis
+### Option 1: Web Interface (Recommended)
+
+```bash
+# Install dependencies (one time)
+pip install langchain ollama httpx structlog rich streamlit PyGitHub
+
+# Run the web app
+python run_web_app.py
+```
+
+Then open your browser and start analyzing repositories!
+
+### Option 2: Command Line
 
 ```bash
 # Navigate to your project
@@ -16,21 +28,34 @@ cd /path/to/your/project
 python /path/to/omniscient_architect.py .
 ```
 
-That's it! You'll see a comprehensive report analyzing your codebase.
+### 1. First Analysis
 
-### 2. Add a Project Objective (Recommended)
+**Web Interface:**
+1. Open the web app at `http://localhost:8501`
+2. Enter a GitHub repository URL (e.g., `https://github.com/microsoft/vscode`)
+3. Optionally add a project objective
+4. Click "🚀 Analyze Repository"
 
+**Command Line:**
 ```bash
-# Tell it what you're trying to build
+python omniscient_architect.py .
+```
+
+### 2. Add Context (Recommended)
+
+**Web Interface:** Enter your project objective in the text area.
+
+**Command Line:**
+```bash
 python omniscient_architect.py . --objective "Build a user authentication system"
 ```
 
-The tool will now check if your code aligns with your stated goal!
+### 3. Save Your Report
 
-### 3. Save the Report
+**Web Interface:** Results are displayed in the browser (copy manually).
 
+**Command Line:**
 ```bash
-# Save to a markdown file
 python omniscient_architect.py . --objective "Your goal" --output review.md
 ```
 
