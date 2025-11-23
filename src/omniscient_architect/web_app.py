@@ -78,7 +78,7 @@ class StreamlitApp:
     """Streamlit web application for repository analysis."""
 
     def __init__(self):
-        # Create analysis config with default values that can be overridden
+        # Create analysis config (can be overridden via UI)
         self.config = AnalysisConfig()
         self.github_client = GitHubClient()
         self.analysis_engine = AnalysisEngine(self.config)
@@ -171,6 +171,8 @@ class StreamlitApp:
 
             # Update config with model selection
             self.config.ollama_model = self.ollama_model
+
+            # Agent selection moved to Focus Navigator (top of main content)
 
     def _render_main_content(self):
         """Render the main content area."""
@@ -313,12 +315,6 @@ class StreamlitApp:
         # Initialize LLM (uses config.ollama_model)
         await self.analysis_engine.initialize_llm()
 
-        # Run analysis with all agents
-        all_findings = []
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        # Create agents
         if self.analysis_engine.llm is None:
             raise ValueError("LLM not initialized")
 
@@ -332,39 +328,11 @@ class StreamlitApp:
             'repo-health': GitHubRepositoryAgent,
         }
         if focus:
-            agents = [full_map[key](self.analysis_engine.llm) for key in focus]
+            agents = [full_map[key](self.analysis_engine.llm) for key in focus if key in full_map]
         else:
             agents = [cls(self.analysis_engine.llm) for cls in full_map.values()]
 
-        # Attach streaming callbacks for live token updates
-        def make_stream_cb(agent_name: str):
-            if agent_name not in self._agent_stream_placeholders:
-                with st.expander(f"🔴 Streaming: {agent_name}", expanded=False):
-                    placeholder = st.empty()
-                    self._agent_stream_placeholders[agent_name] = placeholder
-                    self._agent_stream_buffers[agent_name] = ""
-
-            placeholder = self._agent_stream_placeholders[agent_name]
-
-            def _cb(_agent: str, token: str):
-                buf = self._agent_stream_buffers.get(agent_name, "") + token
-                # Keep buffer at a reasonable size
-                if len(buf) > 8000:
-                    buf = buf[-8000:]
-                self._agent_stream_buffers[agent_name] = buf
-                # Render as code block for monospaced streaming
-                placeholder.markdown(f"```\n{buf}\n```")
-
-            return _cb
-
-        for agent in agents:
-            # type: ignore[attr-defined]
-            try:
-                agent.stream_callback = make_stream_cb(agent.name)
-            except Exception:
-                pass
-
-        # Ingest real files (supports both local and remote via engine)
+        # Ingest real files
         files = await self.analysis_engine._ingest_files(repo_info)
 
         # Run analysis with all agents

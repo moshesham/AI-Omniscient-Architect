@@ -13,7 +13,6 @@ def main():
         script_dir = Path(__file__).parent
 
         # Add src to path for imports
-        import sys
         sys.path.insert(0, str(script_dir / "src"))
 
         # Run streamlit

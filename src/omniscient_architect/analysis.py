@@ -17,7 +17,7 @@ from .models import (
 )
 from .agents import (
     ArchitectureAgent, EfficiencyAgent,
-    ReliabilityAgent, AlignmentAgent, GitHubRepositoryAgent
+    ReliabilityAgent, AlignmentAgent
 )
 
 
@@ -60,8 +60,8 @@ class AnalysisEngine:
                     data = response.json()
                     models = [m['name'] for m in data.get('models', [])]
                     return model in models
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Error checking model availability: {e}")
         return False
 
     async def _pull_model(self, model: str):
@@ -73,9 +73,9 @@ class AnalysisEngine:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            await process.wait()
+            # Capture output and wait
+            stdout, stderr = await process.communicate()
             if process.returncode != 0:
-                stdout, stderr = await process.communicate()
                 logger.error(f"Failed to pull model: {stderr.decode()}")
                 raise subprocess.CalledProcessError(process.returncode or 1, "ollama pull")
             else:
@@ -95,9 +95,9 @@ class AnalysisEngine:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            await process.wait()
+            # Capture output and wait
+            stdout, stderr = await process.communicate()
             if process.returncode != 0:
-                stdout, stderr = await process.communicate()
                 logger.error(f"Docker-compose failed: {stderr.decode()}")
                 raise subprocess.CalledProcessError(process.returncode or 1, "docker-compose")
         except Exception as e:
@@ -134,14 +134,13 @@ class AnalysisEngine:
             await self.llm.ainvoke("Hello")
             logger.info(f"Successfully initialized LLM: {self.config.ollama_model}")
 
-            # Initialize agents (llm is guaranteed to be not None here)
+            # Initialize agents using the registry (respect enabled_agents in config)
             assert self.llm is not None
             self.agents = [
                 ArchitectureAgent(self.llm),
                 EfficiencyAgent(self.llm),
                 ReliabilityAgent(self.llm),
                 AlignmentAgent(self.llm),
-                GitHubRepositoryAgent(self.llm),
             ]
             return True
         except Exception as e:
