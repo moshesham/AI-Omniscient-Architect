@@ -57,3 +57,4 @@ class AnalysisConfig:
     exclude_patterns: List[str] = field(default_factory=lambda: [".git", "__pycache__", "node_modules", ".venv", "venv"])
     ollama_model: str = "codellama:7b-instruct"
     analysis_depth: str = "standard"  # "quick", "standard", "deep"
+    enabled_agents: List[str] = field(default_factory=list)

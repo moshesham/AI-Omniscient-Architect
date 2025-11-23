@@ -52,6 +52,34 @@ ollama pull codellama:7b-instruct
 
 The Omniscient Architect can be easily deployed using Docker for consistent environments and simplified setup.
 
+### Containerized workflow (dev vs prod)
+
+This repo ships with two Compose files:
+
+- `docker-compose.yml` (production-friendly): builds the app image and runs without mounting source code.
+- `docker-compose.dev.yml` (developer experience): mounts the project folder into the container for instant reloads.
+
+Common commands (using the modern `docker compose` syntax):
+
+```powershell
+# Development: runs app + Ollama, mounts source into /app
+docker compose -f docker-compose.dev.yml up --build -d
+
+# Production-like: runs app + Ollama without host mounts
+docker compose up --build -d
+
+# Check health (Streamlit)
+Invoke-WebRequest -UseBasicParsing http://localhost:8501/_stcore/health | Select-Object StatusCode
+
+# Tail logs
+docker compose logs -f app
+```
+
+Notes:
+- Streamlit is bound to 0.0.0.0:8501 in the container; the app is exposed on host port 8501.
+- Healthchecks target `/_stcore/health` for reliable 200 responses.
+- Ollama runs at `http://ollama:11434` inside the app container (mapped to `localhost:11434` on the host).
+
 ### Prerequisites
 - Docker and Docker Compose installed on your system
 - At least 8GB RAM recommended for AI model inference
@@ -119,6 +147,34 @@ The Docker setup includes:
 - **App Container**: Runs the Streamlit web interface on port 8501
 - **Volume Persistence**: AI models are cached in a Docker volume
 - **Health Checks**: Automatic container health monitoring
+
+### App configuration (config.yaml)
+
+Use `config.yaml` at the repo root to tune analysis behavior. Environment variables override file values.
+
+Supported keys:
+- `max_file_size_mb` (int): Maximum file size to ingest (default 10).
+- `max_files` (int): Cap on number of files scanned (default 1000).
+- `include_patterns` (list): Glob patterns to include (e.g., `['*.py','*.ts']`).
+- `exclude_patterns` (list): Folders/patterns to skip (e.g., `['.git','node_modules']`).
+- `ollama_model` (str): Model name, e.g., `codellama:7b-instruct`.
+- `analysis_depth` (str): One of `quick|standard|deep`.
+
+Environment overrides:
+- `OLLAMA_MODEL`, `MAX_FILE_SIZE_MB`, `MAX_FILES`, `ANALYSIS_DEPTH`.
+
+### Agent selection (UI and CLI)
+
+Agents are registered via a simple registry and can be enabled/disabled at runtime.
+
+- In the Streamlit UI (sidebar), pick agents under “Agents”. Your selection updates the active run.
+- From CLI, use `--agents` with a comma-separated list of keys:
+
+```powershell
+python omniscient_architect_ai.py . --agents architecture,efficiency,reliability,alignment
+```
+
+Available agent keys include: `architecture`, `efficiency`, `reliability`, `alignment`, `github_repository`.
 
 ## Usage
 

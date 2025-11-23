@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # Ollama service for AI model inference (pinned tag for stability)
   ollama:
     image: ollama/ollama:0.13.0
     container_name: omniscient-architect-ollama
@@ -11,16 +10,17 @@ services:
       - ollama_data:/root/.ollama
     restart: unless-stopped
 
-  # Main application service (production-friendly: no host mounts)
   app:
     build: .
-    container_name: omniscient-architect-app
+    container_name: omniscient-architect-app-dev
     ports:
       - "8501:8501"
     environment:
       - OLLAMA_HOST=http://ollama:11434
     depends_on:
       - ollama
+    volumes:
+      - .:/app:cached
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8501/_stcore/health || exit 1"]
