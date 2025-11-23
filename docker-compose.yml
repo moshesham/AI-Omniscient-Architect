@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Ollama service for AI model inference
+  ollama:
+    image: ollama/ollama:latest
+    container_name: omniscient-architect-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    # Removed healthcheck because the official Ollama image may not include curl/wget/python
+    # and can therefore fail the health probe. Rely on service logs and port availability.
+
+  # Main application service
+  app:
+    build: .
+    container_name: omniscient-architect-app
+    ports:
+      - "8501:8501"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    # Start after Ollama is created; don't require a container healthcheck (some images lack curl)
+    depends_on:
+      - ollama
+    volumes:
+      - .:/app
+      - /app/__pycache__
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8501/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  ollama_data:
