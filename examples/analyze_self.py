@@ -19,6 +19,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+
 def main():
     """Run the analysis on the Omniscient Architect repo."""
     print("🚀 Starting analysis of the Omniscient Architect repository...")
@@ -26,19 +27,23 @@ def main():
 
     # Run the CLI as a subprocess to avoid event loop conflicts
     cmd = [
-        sys.executable, "omniscient_architect_ai.py",
+        sys.executable,
+        "omniscient_architect_ai.py",
         ".",
         "--objective",
-        "Analyze this AI-powered code review and analysis tool for software architecture, efficiency, reliability, and alignment with its goals",
+        (
+            "Analyze this AI-powered code review and analysis tool for software "
+            "architecture, efficiency, reliability, and alignment with its goals"
+        ),
         "--output",
         "examples/analysis_report.md",
         "--depth",
-        "standard"
+        "standard",
     ]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=Path(__file__).parent.parent)
-        
+
         if result.returncode == 0:
             print("✅ Analysis completed successfully!")
             print("📄 Report saved to: examples/analysis_report.md")
@@ -52,10 +57,10 @@ def main():
             print("STDOUT:", result.stdout)
             print("STDERR:", result.stderr)
             return 1
-            
     except Exception as e:
         print(f"❌ Analysis failed: {e}")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

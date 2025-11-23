@@ -39,8 +39,13 @@ class BaseAIAgent(ABC):
 
         # Create the analysis prompt template (loaded via prompts module)
         from .prompts import load_prompt  # local import to avoid heavy globals
+        prompt_key = (
+            analysis_focus
+            if analysis_focus != "Repository health, community engagement, and project maturity"
+            else "github_repository"
+        )
         self.prompt_template = PromptTemplate(
-            template=load_prompt(analysis_focus if analysis_focus != "Repository health, community engagement, and project maturity" else "github_repository"),
+            template=load_prompt(prompt_key),
             input_variables=["context", "objective", "files_info", "format_instructions"],
         )
 
@@ -309,8 +314,21 @@ class GitHubRepositoryAgent(BaseAIAgent):
 
         # Quality indicators
         test_files = [f for f in files if 'test' in f.path.lower() or 'spec' in f.path.lower()]
-        config_files = [f for f in files if any(x in f.path.lower() for x in ['config', 'setup', 'requirements', 'package'])]
-        doc_files = [f for f in files if any(x in f.path.lower() for x in ['readme', 'doc', 'docs', 'wiki', '.md'])]
+        config_files = [
+            f
+            for f in files
+            if any(x in f.path.lower() for x in [
+                'config', 'setup', 'requirements', 'package'
+            ])
+        ]
+
+        doc_files = [
+            f
+            for f in files
+            if any(x in f.path.lower() for x in [
+                'readme', 'doc', 'docs', 'wiki', '.md'
+            ])
+        ]
 
         context_parts.append(f"- Test files: {len(test_files)}")
         context_parts.append(f"- Configuration files: {len(config_files)}")
@@ -336,5 +354,5 @@ Repository Analysis Summary:
             agent_name=self.name,
             findings=response.findings,
             confidence=response.confidence,
-            reasoning=response.reasoning
+            reasoning=response.reasoning,
         )

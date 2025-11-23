@@ -56,15 +56,44 @@ class AnalysisConfig:
     max_file_size: int = 10 * 1024 * 1024  # 10MB
     max_files: int = 1000
     include_patterns: List[str] = field(default_factory=lambda: [
-        "*.py", "*.js", "*.ts", "*.java", "*.go", "*.rs", "*.md", "*.json", "*.yaml", "*.yml"
+        "*.py",
+        "*.js",
+        "*.ts",
+        "*.java",
+        "*.go",
+        "*.rs",
+        "*.md",
+        "*.json",
+        "*.yaml",
+        "*.yml",
     ])
     exclude_patterns: List[str] = field(default_factory=lambda: [
         ".git", "__pycache__", "node_modules", ".venv", "venv"
     ])
     # Exclude heavy/binary extensions proactively
     exclude_extensions: List[str] = field(default_factory=lambda: [
-        "png", "jpg", "jpeg", "gif", "webp", "svg", "pdf", "docx", "pptx", "xlsx",
-        "zip", "tar", "gz", "ipynb", "mp4", "mov", "avi", "mp3", "wav", "bin", "exe", "dll"
+        "png",
+        "jpg",
+        "jpeg",
+        "gif",
+        "webp",
+        "svg",
+        "pdf",
+        "docx",
+        "pptx",
+        "xlsx",
+        "zip",
+        "tar",
+        "gz",
+        "ipynb",
+        "mp4",
+        "mov",
+        "avi",
+        "mp3",
+        "wav",
+        "bin",
+        "exe",
+        "dll",
     ])
 
     # LLM limits and batching
@@ -76,6 +105,12 @@ class AnalysisConfig:
     sampling_strategy: str = "heuristic"         # "heuristic" | "random"
 
     # LLM configuration
-    ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "codellama:7b-instruct"))
-    ollama_host: str = field(default_factory=lambda: os.getenv("OLLAMA_HOST", "http://localhost:11434"))
-    analysis_depth: str = field(default_factory=lambda: os.getenv("ANALYSIS_DEPTH", "standard"))  # "quick", "standard", "deep"
+    ollama_model: str = field(
+        default_factory=lambda: os.getenv("OLLAMA_MODEL", "codellama:7b-instruct")
+    )
+    ollama_host: str = field(
+        default_factory=lambda: os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    )
+    analysis_depth: str = field(
+        default_factory=lambda: os.getenv("ANALYSIS_DEPTH", "standard")
+    )  # "quick", "standard", "deep"

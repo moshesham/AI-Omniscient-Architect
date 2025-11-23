@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock
 
 from omniscient_architect.models import (
-    FileAnalysis, AgentFindings, ReviewResult,
+    FileAnalysis, AgentFindings,
     RepositoryInfo, AnalysisConfig
 )
 

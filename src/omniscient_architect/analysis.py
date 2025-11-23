@@ -2,14 +2,13 @@
 
 import asyncio
 import logging
-import subprocess
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple, cast
 from concurrent.futures import ThreadPoolExecutor
 
-import httpx
 from langchain_community.chat_models import ChatOllama
 from langchain_core.language_models import BaseLanguageModel
+from .llm_utils import ensure_ollama_ready
 
 from .models import (
     FileAnalysis, AgentFindings, ReviewResult,
@@ -38,9 +37,6 @@ class AnalysisEngine:
             level=logging.INFO,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
-
-    # LLM helpers moved to llm_utils
-    from .llm_utils import ensure_ollama_ready  # type: ignore  # local import to avoid cycles
 
     async def initialize_llm(self) -> bool:
         """Initialize the LLM connection."""
@@ -265,8 +261,15 @@ class AnalysisEngine:
         if language == 'Python':
             # Count control structures and functions
             complexity = 0
-            complexity += len([line for line in content.split('\n') if line.strip().startswith(('if ', 'for ', 'while ', 'def ', 'class '))])
-            return min(complexity, 100)  # Cap at 100
+            lines = content.split('\n')
+            complexity += len([
+                line
+                for line in lines
+                if line.strip().startswith((
+                    'if ', 'for ', 'while ', 'def ', 'class '
+                ))
+            ])
+            return min(complexity, 100)
         return 0
 
     async def _run_multi_agent_analysis(
@@ -431,9 +434,21 @@ class AnalysisEngine:
         has_docs = any(f.language == 'Markdown' for f in files)
         has_config = any(f.language in ['JSON', 'YAML'] for f in files)
 
-        components['Testing'] = f"Present ({sum(1 for f in files if 'test' in f.path.lower())} files)" if has_tests else "Missing"
-        components['Documentation'] = f"Present ({sum(1 for f in files if f.language == 'Markdown')} files)" if has_docs else "Missing"
-        components['Configuration'] = f"Present ({sum(1 for f in files if f.language in ['JSON', 'YAML'])} files)" if has_config else "Missing"
+        components['Testing'] = (
+            f"Present ({sum(1 for f in files if 'test' in f.path.lower())} files)"
+            if has_tests
+            else "Missing"
+        )
+        components['Documentation'] = (
+            f"Present ({sum(1 for f in files if f.language == 'Markdown')} files)"
+            if has_docs
+            else "Missing"
+        )
+        components['Configuration'] = (
+            f"Present ({sum(1 for f in files if f.language in ['JSON', 'YAML'])} files)"
+            if has_config
+            else "Missing"
+        )
 
         return components
 
@@ -457,15 +472,21 @@ class AnalysisEngine:
             for finding in findings.findings:
                 text = finding.lower()
                 # Skip error/system messages
-                if any(err in text for err in [
-                    'analysis failed', 'invalid json', 'output_parsing_failure', 'langchain.com/oss'
-                ]):
+                ERRORS = [
+                    'analysis failed',
+                    'invalid json',
+                    'output_parsing_failure',
+                    'langchain.com/oss',
+                ]
+                if any(err in text for err in ERRORS):
                     continue
-                if any(keyword in text for keyword in ['good', 'strong', 'excellent', 'well', '✅']):
+
+                KEYWORDS = ['good', 'strong', 'excellent', 'well', '✅']
+                if any(keyword in text for keyword in KEYWORDS):
                     strengths.append({
                         'strength': finding.replace('✅', '').strip(),
                         'evidence': f"Identified by {findings.agent_name}",
-                        'why_it_matters': "Contributes to overall code quality and maintainability"
+                        'why_it_matters': "Contributes to overall code quality and maintainability",
                     })
         return strengths[:5]  # Limit to top 5
 

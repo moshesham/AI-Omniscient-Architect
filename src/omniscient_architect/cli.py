@@ -13,7 +13,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 from .analysis import AnalysisEngine
-from .models import RepositoryInfo, AnalysisConfig
+from .models import RepositoryInfo
 from .config import load_config
 from .reporting import ReportGenerator
 from .github_client import create_repository_info_from_github
@@ -178,7 +178,11 @@ Examples:
 
         parser.add_argument(
             '--agents',
-            help='Comma-separated list of agent keys to enable (e.g., architecture,efficiency,reliability,alignment,github_repository). Default: all registered agents.',
+            help=(
+                'Comma-separated list of agent keys to enable (e.g., '
+                'architecture,efficiency,reliability,alignment,github_repository). '
+                'Default: all registered agents.'
+            ),
             default=None
         )
 

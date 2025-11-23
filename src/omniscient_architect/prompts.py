@@ -30,7 +30,8 @@ As an expert architect, analyze the codebase structure and provide insights on:
 
 {format_instructions}
 
-Focus on architectural strengths and weaknesses. Be specific about file locations and provide actionable recommendations."""
+Focus on architectural strengths and weaknesses.
+Be specific about file locations and provide actionable recommendations."""
     ),
     "efficiency": (
         """You are Agent Beta, an expert in code efficiency and performance analysis.
@@ -53,7 +54,8 @@ As an efficiency expert, analyze the code for:
 
 {format_instructions}
 
-Identify specific files with issues and provide concrete improvement suggestions."""
+Identify specific files with issues and provide concrete
+improvement suggestions."""
     ),
     "reliability": (
         """You are Agent Gamma, an expert in software reliability and security.
@@ -76,7 +78,8 @@ As a reliability and security expert, analyze for:
 
 {format_instructions}
 
-Focus on potential security issues and reliability concerns with specific recommendations."""
+Focus on potential security issues and reliability concerns with
+specific recommendations."""
     ),
     "alignment": (
         """You are Agent Delta, an expert in business-objective alignment analysis.
@@ -99,7 +102,8 @@ As an alignment expert, evaluate how well the codebase achieves the stated objec
 
 {format_instructions}
 
-Assess whether the code delivers on the promised objectives and identify gaps."""
+Assess whether the code delivers on the promised objectives and
+identify gaps."""
     ),
     "github_repository": (
         """

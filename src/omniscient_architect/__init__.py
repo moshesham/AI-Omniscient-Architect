@@ -1,69 +1,57 @@
-"""Omniscient Architect - AI-powered code review and development assistant."""
+"""Omniscient Architect package public surface.
+
+Keep imports lightweight at package import time. Heavy or optional
+components (reporting, agents, analysis, CLI) are imported lazily
+below and added to ``__all__`` only when available.
+"""
 
 __version__ = "0.2.0"
-__author__ = "AI Omniscient Architect Team"
-__description__ = "AI-powered code review and development assistant"
 
-# Import basic modules that don't require external dependencies
+# Core model exports (always importable)
 from .models import (
     FileAnalysis, AgentFindings, ReviewResult,
-    RepositoryInfo, AnalysisConfig
+    RepositoryInfo, AnalysisConfig,
 )
 
-# Try to import optional modules
+__all__ = [
+    "FileAnalysis", "AgentFindings", "ReviewResult",
+    "RepositoryInfo", "AnalysisConfig",
+]
+
+# Optional components: import if available and expose names
 try:
     from .reporting import ReportGenerator  # noqa: F401
-    _reporting_available = True
-except ImportError:
-    _reporting_available = False
+    __all__.append("ReportGenerator")
+except Exception:
+    pass
 
 try:
     from .agents import (  # noqa: F401
         BaseAIAgent, ArchitectureAgent, EfficiencyAgent,
-        ReliabilityAgent, AlignmentAgent, GitHubRepositoryAgent
+        ReliabilityAgent, AlignmentAgent, GitHubRepositoryAgent,
     )
-    _agents_available = True
-except ImportError:
-    _agents_available = False
+    __all__.extend([
+        "BaseAIAgent", "ArchitectureAgent", "EfficiencyAgent",
+        "ReliabilityAgent", "AlignmentAgent", "GitHubRepositoryAgent",
+    ])
+except Exception:
+    pass
 
 try:
     from .analysis import AnalysisEngine  # noqa: F401
-    _analysis_available = True
-except ImportError:
-    _analysis_available = False
+    __all__.append("AnalysisEngine")
+except Exception:
+    pass
 
 try:
     from .cli import CLI  # noqa: F401
-    _cli_available = True
-except ImportError:
-    _cli_available = False
+    __all__.append("CLI")
+except Exception:
+    pass
 
 try:
     from .github_client import GitHubClient, create_repository_info_from_github  # noqa: F401
-    _github_available = True
-except ImportError:
-    _github_available = False
+    __all__.extend(["GitHubClient", "create_repository_info_from_github"])
+except Exception:
+    pass
 
-# Build __all__ based on what's available
-__all__ = [
-    "FileAnalysis", "AgentFindings", "ReviewResult",
-    "RepositoryInfo", "AnalysisConfig"
-]
-
-if _reporting_available:
-    __all__.append("ReportGenerator")
-
-if _agents_available:
-    __all__.extend([
-        "BaseAIAgent", "ArchitectureAgent", "EfficiencyAgent",
-        "ReliabilityAgent", "AlignmentAgent", "GitHubRepositoryAgent"
-    ])
-
-if _analysis_available:
-    __all__.append("AnalysisEngine")
-
-if _cli_available:
-    __all__.append("CLI")
-
-if _github_available:
-    __all__.extend(["GitHubClient", "create_repository_info_from_github"]) 

@@ -6,6 +6,7 @@ import sys
 import os
 from pathlib import Path
 
+
 def main():
     """Run the Streamlit web application."""
     try:
@@ -18,7 +19,13 @@ def main():
         # Run streamlit
         env = os.environ.copy()
         env['PYTHONPATH'] = str(script_dir / "src")
-        cmd = [sys.executable, "-m", "streamlit", "run", str(script_dir / "src" / "omniscient_architect" / "web_app.py")]
+        cmd = [
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
+            str(script_dir / "src" / "omniscient_architect" / "web_app.py"),
+        ]
         subprocess.run(cmd, cwd=script_dir, env=env)
 
     except KeyboardInterrupt:
@@ -26,6 +33,7 @@ def main():
     except Exception as e:
         print(f"❌ Error running web application: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

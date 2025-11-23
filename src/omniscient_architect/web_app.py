@@ -1,6 +1,7 @@
 """Streamlit web interface for the Omniscient Architect."""
 
 from typing import List, Dict, Any
+import asyncio
 
 import streamlit as st
 from github import GithubException
@@ -15,9 +16,7 @@ from omniscient_architect.agents import (
 )
 from omniscient_architect.analysis import AnalysisEngine
 from omniscient_architect.models import RepositoryInfo, FileAnalysis, AgentFindings, AnalysisConfig
-from omniscient_architect.config import load_config
 from omniscient_architect.logging_config import setup_logging
-from omniscient_architect.agent_registry import get_registered_agents
 
 # Configure logging
 setup_logging()
@@ -71,6 +70,7 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
 
 class StreamlitApp:
     """Streamlit web application for repository analysis."""
@@ -162,9 +162,14 @@ class StreamlitApp:
             st.subheader("AI Model")
             self.ollama_model = st.selectbox(
                 "Ollama Model",
-                options=["codellama:7b-instruct", "codellama:13b-instruct", "llama2:7b", "llama2:13b"],
+                options=[
+                    "codellama:7b-instruct",
+                    "codellama:13b-instruct",
+                    "llama2:7b",
+                    "llama2:13b",
+                ],
                 index=0,
-                help="Select the Ollama model for analysis"
+                help="Select the Ollama model for analysis",
             )
 
             # Update config with model selection
@@ -194,7 +199,11 @@ class StreamlitApp:
             )
 
         with col2:
-            analyze_button = st.button("🚀 Analyze Repository", type="primary", use_container_width=True)
+            analyze_button = st.button(
+                "🚀 Analyze Repository",
+                type="primary",
+                use_container_width=True,
+            )
 
         # Project Objective Input
         project_objective = st.text_area(
@@ -213,14 +222,28 @@ class StreamlitApp:
     def _render_focus_chat(self):
         """Render a lightweight chat-style focus selector to accelerate iteration."""
         st.header("🗣️ Focus Navigator")
-        st.markdown("Choose what to focus on first. This reduces tokens & speeds feedback. You can refine after seeing initial results.")
-        colA, colB = st.columns([3,2])
+        st.markdown(
+            "Choose what to focus on first. This reduces tokens & speeds feedback. "
+            "You can refine after seeing initial results."
+        )
+        colA, colB = st.columns([3, 2])
         with colA:
+            default_selection = (
+                st.session_state['focus_agents']
+                if st.session_state['focus_agents']
+                else []
+            )
             focus_multiselect = st.multiselect(
                 "Select focus areas",
-                options=["architecture", "efficiency", "reliability", "alignment", "repo-health"],
-                default=st.session_state['focus_agents'] if st.session_state['focus_agents'] else [],
-                help="Pick one or more domains to prioritize. Leave empty for full analysis."
+                options=[
+                    "architecture",
+                    "efficiency",
+                    "reliability",
+                    "alignment",
+                    "repo-health",
+                ],
+                default=default_selection,
+                help="Pick one or more domains to prioritize. Leave empty for full analysis.",
             )
         with colB:
             chat_input = st.text_input(
@@ -238,9 +261,20 @@ class StreamlitApp:
 
         # Process inputs
         if apply_focus:
-            typed = [x.strip().lower() for x in chat_input.split(',') if x.strip()] if chat_input else []
+            typed = (
+                [x.strip().lower() for x in chat_input.split(',') if x.strip()]
+                if chat_input
+                else []
+            )
             merged = sorted(set(focus_multiselect + typed))
-            valid = [x for x in merged if x in {"architecture", "efficiency", "reliability", "alignment", "repo-health"}]
+            VALID_SET = {
+                "architecture",
+                "efficiency",
+                "reliability",
+                "alignment",
+                "repo-health",
+            }
+            valid = [x for x in merged if x in VALID_SET]
             st.session_state['focus_agents'] = valid
             st.session_state['focus_locked'] = True
             st.session_state['focus_history'].append({"selection": valid})
@@ -407,9 +441,18 @@ class StreamlitApp:
 
         # Re-run options
         st.header("🔄 Refine Analysis")
-        if st.button("Re-run with Broader Scope", help="Expand focus to all agents for comprehensive analysis"):
+        if st.button(
+            "Re-run with Broader Scope",
+            help="Expand focus to all agents for comprehensive analysis",
+        ):
             # Expand focus to all
-            all_focus = ["architecture", "efficiency", "reliability", "alignment", "repo-health"]
+            all_focus = [
+                "architecture",
+                "efficiency",
+                "reliability",
+                "alignment",
+                "repo-health",
+            ]
             st.session_state['focus_agents'] = all_focus
             st.session_state['focus_locked'] = True
             st.session_state['focus_history'].append({"expanded": True})
@@ -439,6 +482,7 @@ class StreamlitApp:
                     st.markdown(f"• {finding}")
             else:
                 st.info("No specific findings generated")
+
 
 def main():
     """Main application entry point."""
