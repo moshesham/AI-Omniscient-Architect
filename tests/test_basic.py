@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import AsyncMock
 
 from omniscient_architect.models import (
     FileAnalysis, AgentFindings, ReviewResult,

@@ -1,10 +1,6 @@
 """Streamlit web interface for the Omniscient Architect."""
 
-import asyncio
-import os
-import sys
-from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 
 import streamlit as st
 from github import GithubException

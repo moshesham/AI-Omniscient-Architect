@@ -1,5 +1,6 @@
 """Stub implementation of ChatOllama for local unit tests."""
 
+
 class ChatOllama:
     def __init__(self, model: str, base_url: str | None = None):
         self.model = model

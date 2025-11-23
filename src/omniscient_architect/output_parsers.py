@@ -16,21 +16,21 @@ LOG = logging.getLogger(__name__)
 
 
 def _extract_bullets(text: str) -> List[str]:
-    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
     findings: List[str] = []
-    for l in lines:
+    for line in lines:
         # common bullet markers
-        if l.startswith(("- ", "* ", "• ", "•")):
-            findings.append(l.lstrip("-*• "))
+        if line.startswith(("- ", "* ", "• ", "•")):
+            findings.append(line.lstrip("-*• "))
             continue
 
         # Skip header-like lines (e.g., "Analysis:", "Notes:")
-        if l.endswith(":"):
+        if line.endswith(":"):
             continue
 
         # heuristically treat short lines (< 200 chars) as findings
-        if 0 < len(l) < 200:
-            findings.append(l)
+        if 0 < len(line) < 200:
+            findings.append(line)
     return findings
 
 

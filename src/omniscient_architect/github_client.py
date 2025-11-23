@@ -1,13 +1,11 @@
 """GitHub API client for repository analysis."""
 
-import asyncio
-import json
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from urllib.parse import urlparse
 import httpx
 
-from .models import RepositoryInfo, FileAnalysis
+from .models import RepositoryInfo
 from .logging_config import get_logger
 
 logger = get_logger(__name__)

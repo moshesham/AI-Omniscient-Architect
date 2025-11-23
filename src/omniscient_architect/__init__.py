@@ -12,13 +12,13 @@ from .models import (
 
 # Try to import optional modules
 try:
-    from .reporting import ReportGenerator
+    from .reporting import ReportGenerator  # noqa: F401
     _reporting_available = True
 except ImportError:
     _reporting_available = False
 
 try:
-    from .agents import (
+    from .agents import (  # noqa: F401
         BaseAIAgent, ArchitectureAgent, EfficiencyAgent,
         ReliabilityAgent, AlignmentAgent, GitHubRepositoryAgent
     )
@@ -27,19 +27,19 @@ except ImportError:
     _agents_available = False
 
 try:
-    from .analysis import AnalysisEngine
+    from .analysis import AnalysisEngine  # noqa: F401
     _analysis_available = True
 except ImportError:
     _analysis_available = False
 
 try:
-    from .cli import CLI
+    from .cli import CLI  # noqa: F401
     _cli_available = True
 except ImportError:
     _cli_available = False
 
 try:
-    from .github_client import GitHubClient, create_repository_info_from_github
+    from .github_client import GitHubClient, create_repository_info_from_github  # noqa: F401
     _github_available = True
 except ImportError:
     _github_available = False
@@ -66,4 +66,4 @@ if _cli_available:
     __all__.append("CLI")
 
 if _github_available:
-    __all__.extend(["GitHubClient", "create_repository_info_from_github"])
+    __all__.extend(["GitHubClient", "create_repository_info_from_github"]) 

@@ -1,7 +1,3 @@
-import argparse
-import asyncio
-from pathlib import Path
-
 import pytest
 
 from omniscient_architect.cli import CLI
@@ -19,10 +15,18 @@ async def test_cli_runs_with_monkeypatched_engine(tmp_path, monkeypatch):
     dummy = ReviewResult()
     dummy.project_understanding = "Sample repo"
     dummy.goal_alignment_score = 75
-    dummy.component_status = {"Testing": "Missing", "Documentation": "Present (1 files)", "Configuration": "Missing"}
+    dummy.component_status = {
+        "Testing": "Missing",
+        "Documentation": "Present (1 files)",
+        "Configuration": "Missing",
+    }
     dummy.strengths = []
     dummy.weaknesses = {}
-    dummy.strategic_advice = {"scalability": "none", "future_proofing": "none", "broader_application": "none"}
+    dummy.strategic_advice = {
+        "scalability": "none",
+        "future_proofing": "none",
+        "broader_application": "none",
+    }
     dummy.ai_insights = {}
 
     # Monkeypatch AnalysisEngine to avoid LLM calls
