@@ -15,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from omniscient_architect.github_client import GitHubClient, create_repository_info_from_github
 from omniscient_architect.agents import GitHubRepositoryAgent
 from omniscient_architect.analysis import AnalysisEngine
-from omniscient_architect.models import RepositoryInfo, FileAnalysis, AgentFindings, AnalysisConfig
+from omniscient_architect.models import RepositoryInfo, FileAnalysis, AgentFindings
+from omniscient_architect.config import load_config
 from omniscient_architect.logging_config import setup_logging
 
 # Configure logging
@@ -75,8 +76,8 @@ class StreamlitApp:
     """Streamlit web application for repository analysis."""
 
     def __init__(self):
-        # Create analysis config with default values that can be overridden
-        self.config = AnalysisConfig()
+        # Load analysis config from config.yaml and environment (can be overridden in the UI)
+        self.config = load_config()
         self.github_client = GitHubClient()
         self.analysis_engine = AnalysisEngine(self.config)
         self.github_token = None
