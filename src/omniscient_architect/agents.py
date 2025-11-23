@@ -2,7 +2,7 @@
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Optional, Callable
 from dataclasses import dataclass
 
 from langchain_core.language_models import BaseLanguageModel
@@ -36,11 +36,13 @@ class BaseAIAgent(ABC):
         self.name = name
         self.description = description
         self.analysis_focus = analysis_focus
+        # Optional streaming callback: (agent_name, token_text) -> None
+        self.stream_callback: Optional[Callable[[str, str], None]] = None
 
         # Create the analysis prompt template
         self.prompt_template = PromptTemplate(
             template=self._get_prompt_template(),
-            input_variables=["context", "objective", "files_info"],
+            input_variables=["context", "objective", "files_info", "format_instructions"],
         )
 
         # Set up output parser
@@ -63,12 +65,39 @@ class BaseAIAgent(ABC):
     async def _call_llm(self, context: str, objective: str, files_info: str) -> AgentResponse:
         """Call the LLM with structured prompts."""
         try:
-            chain = self.prompt_template | self.llm | self.output_parser
-            response = await chain.ainvoke({
-                "context": context,
-                "objective": objective,
-                "files_info": files_info
-            })
+            # Format the prompt manually
+            prompt_text = self.prompt_template.format(
+                context=context,
+                objective=objective,
+                files_info=files_info,
+                format_instructions=self.output_parser.get_format_instructions()
+            )
+
+            # If streaming is requested and supported, stream tokens
+            if self.stream_callback and hasattr(self.llm, "astream"):
+                chunks: List[str] = []
+                try:
+                    async for part in self.llm.astream(prompt_text):
+                        token = part if isinstance(part, str) else getattr(part, "content", str(part))
+                        if token:
+                            chunks.append(token)
+                            try:
+                                self.stream_callback(self.name, token)
+                            except Exception:
+                                # Never let UI errors break analysis
+                                pass
+                    response_text = "".join(chunks)
+                except Exception:
+                    # Fallback to non-streaming on any streaming error
+                    llm_response = await self.llm.ainvoke(prompt_text)
+                    response_text = getattr(llm_response, "content", str(llm_response))
+            else:
+                # Non-streaming path
+                llm_response = await self.llm.ainvoke(prompt_text)
+                response_text = getattr(llm_response, "content", str(llm_response))
+
+            # Parse the final text into structured response
+            response = self.output_parser.parse(response_text)
             return response
         except Exception as e:
             # Fallback to basic response if LLM fails

@@ -9,10 +9,14 @@ from typing import List, Optional, Dict, Any
 import streamlit as st
 from github import GithubException
 
-# Add src directory to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
 from omniscient_architect.github_client import GitHubClient, create_repository_info_from_github
+from omniscient_architect.agents import (
+    GitHubRepositoryAgent,
+    ArchitectureAgent,
+    EfficiencyAgent,
+    ReliabilityAgent,
+    AlignmentAgent,
+)
 from omniscient_architect.analysis import AnalysisEngine
 from omniscient_architect.models import RepositoryInfo, FileAnalysis, AgentFindings
 from omniscient_architect.config import load_config
@@ -76,11 +80,23 @@ class StreamlitApp:
     """Streamlit web application for repository analysis."""
 
     def __init__(self):
-        # Load analysis config from config.yaml and environment (can be overridden in the UI)
-        self.config = load_config()
+        # Create analysis config (can be overridden via UI)
+        self.config = AnalysisConfig()
         self.github_client = GitHubClient()
         self.analysis_engine = AnalysisEngine(self.config)
         self.github_token = None
+        # Streaming UI state
+        self._agent_stream_buffers: Dict[str, str] = {}
+        self._agent_stream_placeholders: Dict[str, Any] = {}
+        # Initialize session state for chat focus selection
+        if 'focus_agents' not in st.session_state:
+            st.session_state['focus_agents'] = []  # list of focus keys
+        if 'focus_history' not in st.session_state:
+            st.session_state['focus_history'] = []  # prior chat turns
+        if 'focus_locked' not in st.session_state:
+            st.session_state['focus_locked'] = False
+        if 'last_analysis' not in st.session_state:
+            st.session_state['last_analysis'] = None
 
     def run(self):
         """Run the Streamlit application."""
@@ -158,22 +174,17 @@ class StreamlitApp:
             # Update config with model selection
             self.config.ollama_model = self.ollama_model
 
-            # Agent selection
-            st.subheader("Agents")
-            registered = get_registered_agents()
-            available_agents = list(registered.keys())
-            default_selection = self.config.enabled_agents if self.config.enabled_agents else available_agents
-            self.selected_agents = st.multiselect(
-                "Select agents to run",
-                options=available_agents,
-                default=default_selection,
-                help="Choose which expert agents to include in the analysis"
-            )
-            # Update config with selected agents
-            self.config.enabled_agents = self.selected_agents
+            # Agent selection moved to Focus Navigator (top of main content)
 
     def _render_main_content(self):
         """Render the main content area."""
+        # Focus chat bot at top for iterative narrowing before analysis
+        self._render_focus_chat()
+
+        # Show last analysis summary if available
+        if st.session_state.get('last_analysis'):
+            self._render_last_analysis_summary()
+
         # Repository Input Section
         st.header("🔍 Repository Analysis")
 
@@ -203,6 +214,57 @@ class StreamlitApp:
         elif analyze_button and not repo_url:
             st.error("Please enter a valid GitHub repository URL")
 
+    def _render_focus_chat(self):
+        """Render a lightweight chat-style focus selector to accelerate iteration."""
+        st.header("🗣️ Focus Navigator")
+        st.markdown("Choose what to focus on first. This reduces tokens & speeds feedback. You can refine after seeing initial results.")
+        colA, colB = st.columns([3,2])
+        with colA:
+            focus_multiselect = st.multiselect(
+                "Select focus areas",
+                options=["architecture", "efficiency", "reliability", "alignment", "repo-health"],
+                default=st.session_state['focus_agents'] if st.session_state['focus_agents'] else [],
+                help="Pick one or more domains to prioritize. Leave empty for full analysis."
+            )
+        with colB:
+            chat_input = st.text_input(
+                "Or type (comma-separated)",
+                placeholder="e.g. architecture, efficiency",
+                help="Manual entry; will merge with selections above"
+            )
+        apply_focus = st.button(
+            "✅ Apply Focus",
+            help="Lock current focus selection for upcoming analysis run"
+        )
+        clear_focus = st.button(
+            "↺ Reset Focus", help="Clear current focus selection and start over"
+        )
+
+        # Process inputs
+        if apply_focus:
+            typed = [x.strip().lower() for x in chat_input.split(',') if x.strip()] if chat_input else []
+            merged = sorted(set(focus_multiselect + typed))
+            valid = [x for x in merged if x in {"architecture", "efficiency", "reliability", "alignment", "repo-health"}]
+            st.session_state['focus_agents'] = valid
+            st.session_state['focus_locked'] = True
+            st.session_state['focus_history'].append({"selection": valid})
+            if valid:
+                st.success(f"Focus locked: {', '.join(valid)}")
+            else:
+                st.info("No focus chosen; full agent set will be used.")
+        if clear_focus:
+            st.session_state['focus_agents'] = []
+            st.session_state['focus_locked'] = False
+            st.session_state['focus_history'].append({"cleared": True})
+            st.warning("Focus reset. All agents will run unless you choose new focus.")
+
+        # Advisory based on focus
+        if st.session_state['focus_agents']:
+            depth_hint = "quick" if len(st.session_state['focus_agents']) == 1 else "standard"
+            st.markdown(f"**Recommended depth:** `{depth_hint}` for faster iteration.")
+        else:
+            st.markdown("**No focus set:** will run full multi-agent suite.")
+
     async def _analyze_repository(self, repo_url: str, project_objective: str):
         """Analyze a GitHub repository."""
         try:
@@ -223,6 +285,9 @@ class StreamlitApp:
 
             # Display results
             self._display_analysis_results(analysis_results)
+
+            # Persist for differential analysis
+            st.session_state['last_analysis'] = analysis_results
 
         except GithubException as e:
             st.error(f"GitHub API Error: {str(e)}")
@@ -252,25 +317,34 @@ class StreamlitApp:
         # Initialize LLM (uses config.ollama_model)
         await self.analysis_engine.initialize_llm()
 
-        # Run analysis with selected agents from registry
+        if self.analysis_engine.llm is None:
+            raise ValueError("LLM not initialized")
+
+        # Build agent list based on focus selection
+        focus = st.session_state.get('focus_agents', [])
+        full_map = {
+            'architecture': ArchitectureAgent,
+            'efficiency': EfficiencyAgent,
+            'reliability': ReliabilityAgent,
+            'alignment': AlignmentAgent,
+            'repo-health': GitHubRepositoryAgent,
+        }
+        if focus:
+            agents = [full_map[key](self.analysis_engine.llm) for key in focus if key in full_map]
+        else:
+            agents = [cls(self.analysis_engine.llm) for cls in full_map.values()]
+
+        # Ingest real files
+        files = await self.analysis_engine._ingest_files(repo_info)
+
+        # Run analysis with all agents
         all_findings = []
         progress_bar = st.progress(0)
         status_text = st.empty()
 
-        # Ensure LLM is ready
-        if self.analysis_engine.llm is None:
-            raise ValueError("LLM not initialized")
-
-        registered = get_registered_agents()
-        agent_keys = self.selected_agents if getattr(self, 'selected_agents', None) else list(registered.keys())
-        agents = [registered[k](self.analysis_engine.llm) for k in agent_keys if k in registered]
-
-        # For now, simulate file analysis (in Phase 2, this would clone and analyze actual files)
-        mock_files = self._create_mock_file_analysis(repo_info)
-
         for i, agent in enumerate(agents):
             status_text.text(f"🤖 Running {agent.name}...")
-            findings = await agent.analyze(mock_files, repo_info)
+            findings = await agent.analyze(files, repo_info)
             all_findings.append(findings)
             progress_bar.progress((i + 1) / len(agents))
 
@@ -279,7 +353,7 @@ class StreamlitApp:
 
         return {
             "findings": all_findings,
-            "file_count": len(mock_files),
+            "file_count": len(files),
             "agents_used": len(agents)
         }
 
@@ -334,6 +408,28 @@ class StreamlitApp:
         # Display findings from each agent
         for finding in results["findings"]:
             self._display_agent_findings(finding)
+
+        # Re-run options
+        st.header("🔄 Refine Analysis")
+        if st.button("Re-run with Broader Scope", help="Expand focus to all agents for comprehensive analysis"):
+            # Expand focus to all
+            all_focus = ["architecture", "efficiency", "reliability", "alignment", "repo-health"]
+            st.session_state['focus_agents'] = all_focus
+            st.session_state['focus_locked'] = True
+            st.session_state['focus_history'].append({"expanded": True})
+            st.success("Focus expanded to all agents. Click 'Analyze Repository' above to re-run.")
+            st.rerun()
+
+    def _render_last_analysis_summary(self):
+        """Render summary of last analysis for differential context."""
+        last = st.session_state['last_analysis']
+        with st.expander("📋 Last Analysis Summary", expanded=False):
+            st.markdown(f"**Files Analyzed:** {last['file_count']}")
+            st.markdown(f"**Agents Used:** {last['agents_used']}")
+            st.markdown(f"**Findings:** {len(last['findings'])}")
+            st.markdown("**Agent Breakdown:**")
+            for finding in last['findings']:
+                st.markdown(f"- {finding.agent_name}: {len(finding.findings)} findings")
 
     def _display_agent_findings(self, findings: AgentFindings):
         """Display findings from a specific agent."""
