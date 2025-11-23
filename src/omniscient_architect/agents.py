@@ -39,7 +39,7 @@ class BaseAIAgent(ABC):
         # Create the analysis prompt template
         self.prompt_template = PromptTemplate(
             template=self._get_prompt_template(),
-            input_variables=["context", "objective", "files_info"],
+            input_variables=["context", "objective", "files_info", "format_instructions"],
         )
 
         # Set up output parser
@@ -66,7 +66,8 @@ class BaseAIAgent(ABC):
             response = await chain.ainvoke({
                 "context": context,
                 "objective": objective,
-                "files_info": files_info
+                "files_info": files_info,
+                "format_instructions": self.output_parser.get_format_instructions()
             })
             return response
         except Exception as e:

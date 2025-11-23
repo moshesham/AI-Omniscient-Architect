@@ -15,7 +15,7 @@ from .models import (
 )
 from .agents import (
     ArchitectureAgent, EfficiencyAgent,
-    ReliabilityAgent, AlignmentAgent
+    ReliabilityAgent, AlignmentAgent, GitHubRepositoryAgent
 )
 
 
@@ -43,7 +43,7 @@ class AnalysisEngine:
     async def initialize_llm(self) -> bool:
         """Initialize the LLM connection."""
         try:
-            self.llm = Ollama(model=self.config.ollama_model)
+            self.llm = Ollama(model=self.config.ollama_model, base_url=self.config.ollama_host)
             # Test the connection
             await self.llm.ainvoke("Hello")
             logger.info(f"Successfully initialized LLM: {self.config.ollama_model}")
@@ -55,6 +55,7 @@ class AnalysisEngine:
                 EfficiencyAgent(self.llm),
                 ReliabilityAgent(self.llm),
                 AlignmentAgent(self.llm),
+                GitHubRepositoryAgent(self.llm),
             ]
             return True
         except Exception as e:

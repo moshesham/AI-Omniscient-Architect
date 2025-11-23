@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 from pathlib import Path
+import os
 
 
 @dataclass
@@ -55,5 +56,6 @@ class AnalysisConfig:
     max_files: int = 1000
     include_patterns: List[str] = field(default_factory=lambda: ["*.py", "*.js", "*.ts", "*.java", "*.go", "*.rs"])
     exclude_patterns: List[str] = field(default_factory=lambda: [".git", "__pycache__", "node_modules", ".venv", "venv"])
-    ollama_model: str = "codellama:7b-instruct"
-    analysis_depth: str = "standard"  # "quick", "standard", "deep"
+    ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "codellama:7b-instruct"))
+    ollama_host: str = field(default_factory=lambda: os.getenv("OLLAMA_HOST", "http://localhost:11434"))
+    analysis_depth: str = field(default_factory=lambda: os.getenv("ANALYSIS_DEPTH", "standard"))  # "quick", "standard", "deep"
