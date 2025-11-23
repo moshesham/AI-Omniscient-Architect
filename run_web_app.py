@@ -3,6 +3,7 @@
 
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 def main():
@@ -11,9 +12,15 @@ def main():
         # Get the directory of this script
         script_dir = Path(__file__).parent
 
+        # Add src to path for imports
+        import sys
+        sys.path.insert(0, str(script_dir / "src"))
+
         # Run streamlit
-        cmd = [sys.executable, "-m", "streamlit", "run", str(script_dir / "web_app.py")]
-        subprocess.run(cmd, cwd=script_dir)
+        env = os.environ.copy()
+        env['PYTHONPATH'] = str(script_dir / "src")
+        cmd = [sys.executable, "-m", "streamlit", "run", str(script_dir / "src" / "omniscient_architect" / "web_app.py")]
+        subprocess.run(cmd, cwd=script_dir, env=env)
 
     except KeyboardInterrupt:
         print("\n👋 Web application stopped by user")

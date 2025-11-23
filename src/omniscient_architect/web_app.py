@@ -9,9 +9,6 @@ from typing import List, Optional, Dict, Any
 import streamlit as st
 from github import GithubException
 
-# Add src directory to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
 from omniscient_architect.github_client import GitHubClient, create_repository_info_from_github
 from omniscient_architect.agents import (
     GitHubRepositoryAgent,
@@ -96,6 +93,8 @@ class StreamlitApp:
             st.session_state['focus_history'] = []  # prior chat turns
         if 'focus_locked' not in st.session_state:
             st.session_state['focus_locked'] = False
+        if 'last_analysis' not in st.session_state:
+            st.session_state['last_analysis'] = None
 
     def run(self):
         """Run the Streamlit application."""
@@ -177,6 +176,10 @@ class StreamlitApp:
         """Render the main content area."""
         # Focus chat bot at top for iterative narrowing before analysis
         self._render_focus_chat()
+
+        # Show last analysis summary if available
+        if st.session_state.get('last_analysis'):
+            self._render_last_analysis_summary()
 
         # Repository Input Section
         st.header("🔍 Repository Analysis")
@@ -278,6 +281,9 @@ class StreamlitApp:
 
             # Display results
             self._display_analysis_results(analysis_results)
+
+            # Persist for differential analysis
+            st.session_state['last_analysis'] = analysis_results
 
         except GithubException as e:
             st.error(f"GitHub API Error: {str(e)}")
@@ -432,6 +438,28 @@ class StreamlitApp:
         # Display findings from each agent
         for finding in results["findings"]:
             self._display_agent_findings(finding)
+
+        # Re-run options
+        st.header("🔄 Refine Analysis")
+        if st.button("Re-run with Broader Scope", help="Expand focus to all agents for comprehensive analysis"):
+            # Expand focus to all
+            all_focus = ["architecture", "efficiency", "reliability", "alignment", "repo-health"]
+            st.session_state['focus_agents'] = all_focus
+            st.session_state['focus_locked'] = True
+            st.session_state['focus_history'].append({"expanded": True})
+            st.success("Focus expanded to all agents. Click 'Analyze Repository' above to re-run.")
+            st.rerun()
+
+    def _render_last_analysis_summary(self):
+        """Render summary of last analysis for differential context."""
+        last = st.session_state['last_analysis']
+        with st.expander("📋 Last Analysis Summary", expanded=False):
+            st.markdown(f"**Files Analyzed:** {last['file_count']}")
+            st.markdown(f"**Agents Used:** {last['agents_used']}")
+            st.markdown(f"**Findings:** {len(last['findings'])}")
+            st.markdown("**Agent Breakdown:**")
+            for finding in last['findings']:
+                st.markdown(f"- {finding.agent_name}: {len(finding.findings)} findings")
 
     def _display_agent_findings(self, findings: AgentFindings):
         """Display findings from a specific agent."""

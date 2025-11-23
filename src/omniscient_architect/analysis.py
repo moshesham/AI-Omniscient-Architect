@@ -2,11 +2,13 @@
 
 import asyncio
 import logging
+import subprocess
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple, cast
 from concurrent.futures import ThreadPoolExecutor
 
-from langchain_community.llms import Ollama
+import httpx
+from langchain_community.chat_models import ChatOllama
 from langchain_core.language_models import BaseLanguageModel
 
 from .models import (
@@ -40,10 +42,94 @@ class AnalysisEngine:
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
 
+    async def _check_ollama_server(self, base_url: str) -> bool:
+        """Check if Ollama server is responding."""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{base_url}/api/tags", timeout=5.0)
+                return response.status_code == 200
+        except Exception:
+            return False
+
+    async def _check_model_available(self, base_url: str, model: str) -> bool:
+        """Check if the specified model is available."""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{base_url}/api/tags")
+                if response.status_code == 200:
+                    data = response.json()
+                    models = [m['name'] for m in data.get('models', [])]
+                    return model in models
+        except Exception:
+            pass
+        return False
+
+    async def _pull_model(self, model: str):
+        """Pull the model using docker exec."""
+        try:
+            logger.info(f"Pulling model {model}")
+            process = await asyncio.create_subprocess_exec(
+                "docker", "exec", "omniscient-architect-ollama", "ollama", "pull", model,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await process.wait()
+            if process.returncode != 0:
+                stdout, stderr = await process.communicate()
+                logger.error(f"Failed to pull model: {stderr.decode()}")
+                raise subprocess.CalledProcessError(process.returncode or 1, "ollama pull")
+            else:
+                logger.info(f"Model {model} pulled successfully")
+        except Exception as e:
+            logger.error(f"Error pulling model: {e}")
+            raise
+
+    async def _start_ollama(self):
+        """Attempt to start Ollama using docker-compose."""
+        try:
+            project_root = Path(__file__).parent.parent.parent
+            logger.info(f"Starting Ollama from {project_root}")
+            process = await asyncio.create_subprocess_exec(
+                "docker-compose", "up", "-d", "ollama",
+                cwd=str(project_root),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await process.wait()
+            if process.returncode != 0:
+                stdout, stderr = await process.communicate()
+                logger.error(f"Docker-compose failed: {stderr.decode()}")
+                raise subprocess.CalledProcessError(process.returncode or 1, "docker-compose")
+        except Exception as e:
+            logger.error(f"Failed to start Ollama: {e}")
+            raise
+
     async def initialize_llm(self) -> bool:
         """Initialize the LLM connection."""
         try:
-            self.llm = Ollama(model=self.config.ollama_model, base_url=self.config.ollama_host)
+            base_url = self.config.ollama_host or "http://localhost:11434"
+            
+            # Check if server is up
+            if not await self._check_ollama_server(base_url):
+                logger.info("Ollama server not responding, attempting to start...")
+                await self._start_ollama()
+                # Wait for startup
+                await asyncio.sleep(10)
+                if not await self._check_ollama_server(base_url):
+                    logger.error("Ollama server still not responding after startup attempt")
+                    return False
+            
+            # Check if model is available
+            if not await self._check_model_available(base_url, self.config.ollama_model):
+                logger.info(f"Model {self.config.ollama_model} not available, pulling...")
+                await self._pull_model(self.config.ollama_model)
+                # Wait for pull
+                await asyncio.sleep(30)
+                if not await self._check_model_available(base_url, self.config.ollama_model):
+                    logger.error(f"Model {self.config.ollama_model} still not available after pull")
+                    return False
+            
+            self.llm = ChatOllama(model=self.config.ollama_model, base_url=base_url)
             # Test the connection
             await self.llm.ainvoke("Hello")
             logger.info(f"Successfully initialized LLM: {self.config.ollama_model}")
