@@ -13,10 +13,7 @@ from .models import (
     FileAnalysis, AgentFindings, ReviewResult,
     RepositoryInfo, AnalysisConfig
 )
-from .agents import (
-    ArchitectureAgent, EfficiencyAgent,
-    ReliabilityAgent, AlignmentAgent
-)
+from .agent_registry import create_agents
 
 
 logger = logging.getLogger(__name__)
@@ -48,14 +45,10 @@ class AnalysisEngine:
             await self.llm.ainvoke("Hello")
             logger.info(f"Successfully initialized LLM: {self.config.ollama_model}")
 
-            # Initialize agents (llm is guaranteed to be not None here)
+            # Initialize agents using the registry (respect enabled_agents in config)
             assert self.llm is not None
-            self.agents = [
-                ArchitectureAgent(self.llm),
-                EfficiencyAgent(self.llm),
-                ReliabilityAgent(self.llm),
-                AlignmentAgent(self.llm),
-            ]
+            enabled = getattr(self.config, 'enabled_agents', None)
+            self.agents = create_agents(self.llm, enabled if enabled else None)
             return True
         except Exception as e:
             logger.error(f"Failed to initialize LLM: {e}")
