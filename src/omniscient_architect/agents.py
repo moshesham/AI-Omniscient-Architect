@@ -2,7 +2,7 @@
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable
 from dataclasses import dataclass
 
 from langchain_core.language_models import BaseLanguageModel
@@ -35,6 +35,8 @@ class BaseAIAgent(ABC):
         self.name = name
         self.description = description
         self.analysis_focus = analysis_focus
+        # Optional streaming callback: (agent_name, token_text) -> None
+        self.stream_callback: Optional[Callable[[str, str], None]] = None
 
         # Create the analysis prompt template
         self.prompt_template = PromptTemplate(
@@ -69,16 +71,31 @@ class BaseAIAgent(ABC):
                 files_info=files_info,
                 format_instructions=self.output_parser.get_format_instructions()
             )
-            
-            # Call LLM directly
-            llm_response = await self.llm.ainvoke(prompt_text)
-            
-            # Parse the response (handle both string and AIMessage)
-            if hasattr(llm_response, 'content'):
-                response_text = llm_response.content
+
+            # If streaming is requested and supported, stream tokens
+            if self.stream_callback and hasattr(self.llm, "astream"):
+                chunks: List[str] = []
+                try:
+                    async for part in self.llm.astream(prompt_text):
+                        token = part if isinstance(part, str) else getattr(part, "content", str(part))
+                        if token:
+                            chunks.append(token)
+                            try:
+                                self.stream_callback(self.name, token)
+                            except Exception:
+                                # Never let UI errors break analysis
+                                pass
+                    response_text = "".join(chunks)
+                except Exception:
+                    # Fallback to non-streaming on any streaming error
+                    llm_response = await self.llm.ainvoke(prompt_text)
+                    response_text = getattr(llm_response, "content", str(llm_response))
             else:
-                response_text = str(llm_response)
-            
+                # Non-streaming path
+                llm_response = await self.llm.ainvoke(prompt_text)
+                response_text = getattr(llm_response, "content", str(llm_response))
+
+            # Parse the final text into structured response
             response = self.output_parser.parse(response_text)
             return response
         except Exception as e:

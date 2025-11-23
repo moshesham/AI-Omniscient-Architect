@@ -13,7 +13,13 @@ from github import GithubException
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from omniscient_architect.github_client import GitHubClient, create_repository_info_from_github
-from omniscient_architect.agents import GitHubRepositoryAgent
+from omniscient_architect.agents import (
+    GitHubRepositoryAgent,
+    ArchitectureAgent,
+    EfficiencyAgent,
+    ReliabilityAgent,
+    AlignmentAgent,
+)
 from omniscient_architect.analysis import AnalysisEngine
 from omniscient_architect.models import RepositoryInfo, FileAnalysis, AgentFindings, AnalysisConfig
 from omniscient_architect.logging_config import setup_logging
@@ -80,6 +86,16 @@ class StreamlitApp:
         self.github_client = GitHubClient()
         self.analysis_engine = AnalysisEngine(self.config)
         self.github_token = None
+        # Streaming UI state
+        self._agent_stream_buffers: Dict[str, str] = {}
+        self._agent_stream_placeholders: Dict[str, Any] = {}
+        # Initialize session state for chat focus selection
+        if 'focus_agents' not in st.session_state:
+            st.session_state['focus_agents'] = []  # list of focus keys
+        if 'focus_history' not in st.session_state:
+            st.session_state['focus_history'] = []  # prior chat turns
+        if 'focus_locked' not in st.session_state:
+            st.session_state['focus_locked'] = False
 
     def run(self):
         """Run the Streamlit application."""
@@ -159,6 +175,9 @@ class StreamlitApp:
 
     def _render_main_content(self):
         """Render the main content area."""
+        # Focus chat bot at top for iterative narrowing before analysis
+        self._render_focus_chat()
+
         # Repository Input Section
         st.header("🔍 Repository Analysis")
 
@@ -187,6 +206,57 @@ class StreamlitApp:
             asyncio.run(self._analyze_repository(repo_url, project_objective))
         elif analyze_button and not repo_url:
             st.error("Please enter a valid GitHub repository URL")
+
+    def _render_focus_chat(self):
+        """Render a lightweight chat-style focus selector to accelerate iteration."""
+        st.header("🗣️ Focus Navigator")
+        st.markdown("Choose what to focus on first. This reduces tokens & speeds feedback. You can refine after seeing initial results.")
+        colA, colB = st.columns([3,2])
+        with colA:
+            focus_multiselect = st.multiselect(
+                "Select focus areas",
+                options=["architecture", "efficiency", "reliability", "alignment", "repo-health"],
+                default=st.session_state['focus_agents'] if st.session_state['focus_agents'] else [],
+                help="Pick one or more domains to prioritize. Leave empty for full analysis."
+            )
+        with colB:
+            chat_input = st.text_input(
+                "Or type (comma-separated)",
+                placeholder="e.g. architecture, efficiency",
+                help="Manual entry; will merge with selections above"
+            )
+        apply_focus = st.button(
+            "✅ Apply Focus",
+            help="Lock current focus selection for upcoming analysis run"
+        )
+        clear_focus = st.button(
+            "↺ Reset Focus", help="Clear current focus selection and start over"
+        )
+
+        # Process inputs
+        if apply_focus:
+            typed = [x.strip().lower() for x in chat_input.split(',') if x.strip()] if chat_input else []
+            merged = sorted(set(focus_multiselect + typed))
+            valid = [x for x in merged if x in {"architecture", "efficiency", "reliability", "alignment", "repo-health"}]
+            st.session_state['focus_agents'] = valid
+            st.session_state['focus_locked'] = True
+            st.session_state['focus_history'].append({"selection": valid})
+            if valid:
+                st.success(f"Focus locked: {', '.join(valid)}")
+            else:
+                st.info("No focus chosen; full agent set will be used.")
+        if clear_focus:
+            st.session_state['focus_agents'] = []
+            st.session_state['focus_locked'] = False
+            st.session_state['focus_history'].append({"cleared": True})
+            st.warning("Focus reset. All agents will run unless you choose new focus.")
+
+        # Advisory based on focus
+        if st.session_state['focus_agents']:
+            depth_hint = "quick" if len(st.session_state['focus_agents']) == 1 else "standard"
+            st.markdown(f"**Recommended depth:** `{depth_hint}` for faster iteration.")
+        else:
+            st.markdown("**No focus set:** will run full multi-agent suite.")
 
     async def _analyze_repository(self, repo_url: str, project_objective: str):
         """Analyze a GitHub repository."""
@@ -242,17 +312,54 @@ class StreamlitApp:
         progress_bar = st.progress(0)
         status_text = st.empty()
 
-        # Create GitHub repository agent
+        # Create agents
         if self.analysis_engine.llm is None:
             raise ValueError("LLM not initialized")
 
-        agents = [
-            GitHubRepositoryAgent(self.analysis_engine.llm),
-            # Add other agents as they become available
-        ]
+        # Build agent list based on focus selection
+        focus = st.session_state.get('focus_agents', [])
+        full_map = {
+            'architecture': ArchitectureAgent,
+            'efficiency': EfficiencyAgent,
+            'reliability': ReliabilityAgent,
+            'alignment': AlignmentAgent,
+            'repo-health': GitHubRepositoryAgent,
+        }
+        if focus:
+            agents = [full_map[key](self.analysis_engine.llm) for key in focus]
+        else:
+            agents = [cls(self.analysis_engine.llm) for cls in full_map.values()]
 
-        # For now, simulate file analysis (in Phase 2, this would clone and analyze actual files)
-        mock_files = self._create_mock_file_analysis(repo_info)
+        # Attach streaming callbacks for live token updates
+        def make_stream_cb(agent_name: str):
+            if agent_name not in self._agent_stream_placeholders:
+                with st.expander(f"🔴 Streaming: {agent_name}", expanded=False):
+                    placeholder = st.empty()
+                    self._agent_stream_placeholders[agent_name] = placeholder
+                    self._agent_stream_buffers[agent_name] = ""
+
+            placeholder = self._agent_stream_placeholders[agent_name]
+
+            def _cb(_agent: str, token: str):
+                buf = self._agent_stream_buffers.get(agent_name, "") + token
+                # Keep buffer at a reasonable size
+                if len(buf) > 8000:
+                    buf = buf[-8000:]
+                self._agent_stream_buffers[agent_name] = buf
+                # Render as code block for monospaced streaming
+                placeholder.markdown(f"```\n{buf}\n```")
+
+            return _cb
+
+        for agent in agents:
+            # type: ignore[attr-defined]
+            try:
+                agent.stream_callback = make_stream_cb(agent.name)
+            except Exception:
+                pass
+
+        # Ingest real files (supports both local and remote via engine)
+        files = await self.analysis_engine._ingest_files(repo_info)
 
         # Run analysis with all agents
         all_findings = []
@@ -261,7 +368,7 @@ class StreamlitApp:
 
         for i, agent in enumerate(agents):
             status_text.text(f"🤖 Running {agent.name}...")
-            findings = await agent.analyze(mock_files, repo_info)
+            findings = await agent.analyze(files, repo_info)
             all_findings.append(findings)
             progress_bar.progress((i + 1) / len(agents))
 
@@ -270,7 +377,7 @@ class StreamlitApp:
 
         return {
             "findings": all_findings,
-            "file_count": len(mock_files),
+            "file_count": len(files),
             "agents_used": len(agents)
         }
 
