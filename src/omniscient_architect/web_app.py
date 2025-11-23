@@ -18,7 +18,7 @@ from omniscient_architect.agents import (
     AlignmentAgent,
 )
 from omniscient_architect.analysis import AnalysisEngine
-from omniscient_architect.models import RepositoryInfo, FileAnalysis, AgentFindings
+from omniscient_architect.models import RepositoryInfo, FileAnalysis, AgentFindings, AnalysisConfig
 from omniscient_architect.config import load_config
 from omniscient_architect.logging_config import setup_logging
 from omniscient_architect.agent_registry import get_registered_agents
