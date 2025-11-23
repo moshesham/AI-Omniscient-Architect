@@ -1,0 +1,31 @@
+# Omniscient Architect configuration
+# Values here can be overridden by environment variables or by passing overrides to the loader.
+
+# Maximum file size to analyze (MB)
+max_file_size_mb: 10
+
+# Maximum number of files to analyze
+max_files: 100
+
+# File patterns to include in the analysis
+include_patterns:
+  - "*.py"
+  - "*.js"
+  - "*.ts"
+  - "*.java"
+  - "*.go"
+  - "*.rs"
+
+# File/dir patterns to exclude
+exclude_patterns:
+  - ".git"
+  - "__pycache__"
+  - "node_modules"
+  - ".venv"
+  - "venv"
+
+# Default Ollama model
+ollama_model: "codellama:7b-instruct"
+
+# Analysis depth: quick, standard, deep
+analysis_depth: "standard"

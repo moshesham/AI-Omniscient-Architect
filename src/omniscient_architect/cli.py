@@ -13,6 +13,7 @@ from rich.text import Text
 
 from .analysis import AnalysisEngine
 from .models import RepositoryInfo, AnalysisConfig
+from .config import load_config
 from .reporting import ReportGenerator
 
 
@@ -28,12 +29,18 @@ class CLI:
     async def run(self, args: argparse.Namespace) -> int:
         """Run the CLI with parsed arguments."""
         try:
-            # Initialize analysis engine
-            config = AnalysisConfig(
-                ollama_model=args.model or "codellama:7b-instruct",
-                analysis_depth=args.depth or "standard"
-            )
+            # Initialize analysis engine (config from config.yaml / env, with CLI overrides)
+            cli_overrides = {}
+            if args.model:
+                cli_overrides["ollama_model"] = args.model
+            if args.depth:
+                cli_overrides["analysis_depth"] = args.depth
+            if args.agents:
+                # Support comma-separated list
+                enabled = [a.strip() for a in args.agents.split(',') if a.strip()]
+                cli_overrides["enabled_agents"] = enabled
 
+            config = load_config(cli_overrides)
             self.engine = AnalysisEngine(config)
 
             with Progress(
@@ -152,6 +159,12 @@ Examples:
             choices=['quick', 'standard', 'deep'],
             help='Analysis depth (default: standard)',
             default='standard'
+        )
+
+        parser.add_argument(
+            '--agents',
+            help='Comma-separated list of agent keys to enable (e.g., architecture,efficiency,reliability,alignment,github_repository). Default: all registered agents.',
+            default=None
         )
 
         return parser

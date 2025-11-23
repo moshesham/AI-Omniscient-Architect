@@ -11,6 +11,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 
 from .models import AgentFindings, FileAnalysis, RepositoryInfo
+from .agent_registry import register_agent
 
 
 class AgentResponse(BaseModel):
@@ -92,6 +93,7 @@ class BaseAIAgent(ABC):
         return "\n".join(context_parts)
 
 
+@register_agent('architecture')
 class ArchitectureAgent(BaseAIAgent):
     """Agent specialized in architecture and design analysis."""
 
@@ -145,6 +147,7 @@ Focus on architectural strengths and weaknesses. Be specific about file location
         )
 
 
+@register_agent('efficiency')
 class EfficiencyAgent(BaseAIAgent):
     """Agent specialized in efficiency and performance analysis."""
 
@@ -198,6 +201,7 @@ Identify specific files with issues and provide concrete improvement suggestions
         )
 
 
+@register_agent('reliability')
 class ReliabilityAgent(BaseAIAgent):
     """Agent specialized in reliability and security analysis."""
 
@@ -251,6 +255,7 @@ Focus on potential security issues and reliability concerns with specific recomm
         )
 
 
+@register_agent('alignment')
 class AlignmentAgent(BaseAIAgent):
     """Agent specialized in objective alignment analysis."""
 
@@ -304,6 +309,7 @@ Assess whether the code delivers on the promised objectives and identify gaps.""
         )
 
 
+@register_agent('github_repository')
 class GitHubRepositoryAgent(BaseAIAgent):
     """Agent specialized in GitHub repository analysis and metadata assessment."""
 

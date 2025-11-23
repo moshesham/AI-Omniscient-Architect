@@ -13,10 +13,11 @@ from github import GithubException
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from omniscient_architect.github_client import GitHubClient, create_repository_info_from_github
-from omniscient_architect.agents import GitHubRepositoryAgent
 from omniscient_architect.analysis import AnalysisEngine
-from omniscient_architect.models import RepositoryInfo, FileAnalysis, AgentFindings, AnalysisConfig
+from omniscient_architect.models import RepositoryInfo, FileAnalysis, AgentFindings
+from omniscient_architect.config import load_config
 from omniscient_architect.logging_config import setup_logging
+from omniscient_architect.agent_registry import get_registered_agents
 
 # Configure logging
 setup_logging()
@@ -75,8 +76,8 @@ class StreamlitApp:
     """Streamlit web application for repository analysis."""
 
     def __init__(self):
-        # Create analysis config with default values that can be overridden
-        self.config = AnalysisConfig()
+        # Load analysis config from config.yaml and environment (can be overridden in the UI)
+        self.config = load_config()
         self.github_client = GitHubClient()
         self.analysis_engine = AnalysisEngine(self.config)
         self.github_token = None
@@ -156,6 +157,20 @@ class StreamlitApp:
 
             # Update config with model selection
             self.config.ollama_model = self.ollama_model
+
+            # Agent selection
+            st.subheader("Agents")
+            registered = get_registered_agents()
+            available_agents = list(registered.keys())
+            default_selection = self.config.enabled_agents if self.config.enabled_agents else available_agents
+            self.selected_agents = st.multiselect(
+                "Select agents to run",
+                options=available_agents,
+                default=default_selection,
+                help="Choose which expert agents to include in the analysis"
+            )
+            # Update config with selected agents
+            self.config.enabled_agents = self.selected_agents
 
     def _render_main_content(self):
         """Render the main content area."""
@@ -237,27 +252,21 @@ class StreamlitApp:
         # Initialize LLM (uses config.ollama_model)
         await self.analysis_engine.initialize_llm()
 
-        # Run analysis with all agents
+        # Run analysis with selected agents from registry
         all_findings = []
         progress_bar = st.progress(0)
         status_text = st.empty()
 
-        # Create GitHub repository agent
+        # Ensure LLM is ready
         if self.analysis_engine.llm is None:
             raise ValueError("LLM not initialized")
 
-        agents = [
-            GitHubRepositoryAgent(self.analysis_engine.llm),
-            # Add other agents as they become available
-        ]
+        registered = get_registered_agents()
+        agent_keys = self.selected_agents if getattr(self, 'selected_agents', None) else list(registered.keys())
+        agents = [registered[k](self.analysis_engine.llm) for k in agent_keys if k in registered]
 
         # For now, simulate file analysis (in Phase 2, this would clone and analyze actual files)
         mock_files = self._create_mock_file_analysis(repo_info)
-
-        # Run analysis with all agents
-        all_findings = []
-        progress_bar = st.progress(0)
-        status_text = st.empty()
 
         for i, agent in enumerate(agents):
             status_text.text(f"🤖 Running {agent.name}...")
