@@ -35,6 +35,10 @@ class CLI:
                 cli_overrides["ollama_model"] = args.model
             if args.depth:
                 cli_overrides["analysis_depth"] = args.depth
+            if args.agents:
+                # Support comma-separated list
+                enabled = [a.strip() for a in args.agents.split(',') if a.strip()]
+                cli_overrides["enabled_agents"] = enabled
 
             config = load_config(cli_overrides)
             self.engine = AnalysisEngine(config)
@@ -155,6 +159,12 @@ Examples:
             choices=['quick', 'standard', 'deep'],
             help='Analysis depth (default: standard)',
             default='standard'
+        )
+
+        parser.add_argument(
+            '--agents',
+            help='Comma-separated list of agent keys to enable (e.g., architecture,efficiency,reliability,alignment,github_repository). Default: all registered agents.',
+            default=None
         )
 
         return parser

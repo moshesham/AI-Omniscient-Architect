@@ -19,6 +19,10 @@ FROM python:3.11-slim
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app:/install
+# Force Streamlit out of development mode to ensure stable port 8501 behavior
+ENV STREAMLIT_GLOBAL_DEVELOPMENT_MODE=false \
+    STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
+    STREAMLIT_SERVER_PORT=8501
 
 WORKDIR /app
 
@@ -46,5 +50,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD python -c "import socket,sys; s=socket.socket(); s.settimeout(2);\
         sys.exit(0) if s.connect_ex(('127.0.0.1', 8501))==0 else sys.exit(1)"
 
-# Run the application via streamlit and bind to 0.0.0.0
-CMD ["streamlit", "run", "web_app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+# Run the application via streamlit; server address/port configured via env vars above
+CMD ["python", "-m", "streamlit", "run", "web_app.py"]
