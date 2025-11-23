@@ -62,13 +62,24 @@ class BaseAIAgent(ABC):
     async def _call_llm(self, context: str, objective: str, files_info: str) -> AgentResponse:
         """Call the LLM with structured prompts."""
         try:
-            chain = self.prompt_template | self.llm | self.output_parser
-            response = await chain.ainvoke({
-                "context": context,
-                "objective": objective,
-                "files_info": files_info,
-                "format_instructions": self.output_parser.get_format_instructions()
-            })
+            # Format the prompt manually
+            prompt_text = self.prompt_template.format(
+                context=context,
+                objective=objective,
+                files_info=files_info,
+                format_instructions=self.output_parser.get_format_instructions()
+            )
+            
+            # Call LLM directly
+            llm_response = await self.llm.ainvoke(prompt_text)
+            
+            # Parse the response (handle both string and AIMessage)
+            if hasattr(llm_response, 'content'):
+                response_text = llm_response.content
+            else:
+                response_text = str(llm_response)
+            
+            response = self.output_parser.parse(response_text)
             return response
         except Exception as e:
             # Fallback to basic response if LLM fails

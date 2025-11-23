@@ -5,6 +5,7 @@ import argparse
 import sys
 from pathlib import Path
 from typing import Optional
+import os
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -14,6 +15,7 @@ from rich.text import Text
 from .analysis import AnalysisEngine
 from .models import RepositoryInfo, AnalysisConfig
 from .reporting import ReportGenerator
+from .github_client import create_repository_info_from_github
 
 
 console = Console()
@@ -49,17 +51,30 @@ class CLI:
 
                 progress.update(init_task, completed=True)
 
-            # Validate repository path
-            repo_path = Path(args.repo_path)
-            if not repo_path.exists():
-                console.print(f"[red]Error: Repository path does not exist: {repo_path}[/red]")
-                return 1
+            # Determine local path vs GitHub URL
+            repo_arg = args.repo_path
+            if repo_arg.startswith("http://") or repo_arg.startswith("https://"):
+                if "github.com" not in repo_arg:
+                    console.print("[red]Only GitHub URLs are supported for remote analysis currently.[/red]")
+                    return 1
+                # Create RepositoryInfo from GitHub URL
+                repo_info = await create_repository_info_from_github(
+                    repo_arg,
+                    token=os.environ.get("GITHUB_TOKEN"),
+                    project_objective=args.objective or ""
+                )
+            else:
+                # Validate repository path
+                repo_path = Path(repo_arg)
+                if not repo_path.exists():
+                    console.print(f"[red]Error: Repository path does not exist: {repo_path}[/red]")
+                    return 1
 
-            # Create repository info
-            repo_info = RepositoryInfo(
-                path=repo_path,
-                project_objective=args.objective or ""
-            )
+                # Create repository info
+                repo_info = RepositoryInfo(
+                    path=repo_path,
+                    project_objective=args.objective or ""
+                )
 
             # Run analysis
             with Progress(
