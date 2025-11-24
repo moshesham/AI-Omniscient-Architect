@@ -41,3 +41,47 @@ Output format (JSON):
   "recommendations": [...]
 }
 """
+
+RELIABILITY_PROMPT = """
+You are an expert in software reliability and testing.
+
+Context:
+- Repository: {repo_name}
+- Tech Stack: {tech_stack}
+- Complexity Score: {complexity_score}
+
+Files to analyze:
+{file_summaries}
+
+Task: Identify reliability issues, error handling gaps, testing coverage, and resilience concerns.
+
+Output format (JSON):
+{
+  "reliability_issues": [...],
+  "error_handling_gaps": [...],
+  "testing_recommendations": [...],
+  "recommendations": [...]
+}
+"""
+
+ALIGNMENT_PROMPT = """
+You are an expert in code quality and alignment analysis.
+
+Context:
+- Repository: {repo_name}
+- Project Objective: {project_objective}
+- Tech Stack: {tech_stack}
+
+Files to analyze:
+{file_summaries}
+
+Task: Identify alignment issues between code, documentation, requirements, and standards.
+
+Output format (JSON):
+{
+  "alignment_issues": [...],
+  "documentation_gaps": [...],
+  "standards_violations": [...],
+  "recommendations": [...]
+}
+"""

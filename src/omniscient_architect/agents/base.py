@@ -45,8 +45,9 @@ class BaseAIAgent(ABC):
         )
         self.output_parser = PydanticOutputParser(pydantic_object=AgentResponse)
 
+
     @abstractmethod
-    def _get_prompt_template(self) -> str:
+    def get_prompt_template(self) -> str:
         """Return the prompt template for this agent."""
         pass
 
@@ -58,3 +59,52 @@ class BaseAIAgent(ABC):
     ) -> AgentResponse:
         """Run analysis and return structured agent response."""
         pass
+
+    def prepare_files_context(self, files: List[FileAnalysis], max_files: int = 10) -> str:
+        """Prepare a context string from file analyses."""
+        context_parts = []
+        for file in files[:max_files]:
+            context_parts.append(f"File: {file.path}")
+            context_parts.append(f"Language: {file.language}")
+            context_parts.append(f"Size: {file.size} bytes")
+            if file.content and len(file.content) < 2000:
+                context_parts.append(f"Content preview:\n{file.content[:2000]}...")
+            context_parts.append("---")
+        return "\n".join(context_parts)
+
+    async def call_llm(self, context: str, objective: str, files_info: str) -> AgentResponse:
+        """Call the LLM with structured prompts."""
+        try:
+            prompt_text = self.prompt_template.format(
+                context=context,
+                objective=objective,
+                files_info=files_info,
+                format_instructions=self.output_parser.get_format_instructions()
+            )
+            if self.stream_callback and hasattr(self.llm, "astream"):
+                chunks: List[str] = []
+                try:
+                    async for part in self.llm.astream(prompt_text):
+                        token = part if isinstance(part, str) else getattr(part, "content", str(part))
+                        if token:
+                            chunks.append(token)
+                            try:
+                                self.stream_callback(self.name, token)
+                            except Exception:
+                                pass
+                    response_text = "".join(chunks)
+                except Exception:
+                    llm_response = await self.llm.ainvoke(prompt_text)
+                    response_text = getattr(llm_response, "content", str(llm_response))
+            else:
+                llm_response = await self.llm.ainvoke(prompt_text)
+                response_text = getattr(llm_response, "content", str(llm_response))
+            response = self.output_parser.parse(response_text)
+            return response
+        except Exception as e:
+            return AgentResponse(
+                findings=[f"Analysis failed due to: {str(e)}"],
+                confidence=0.0,
+                reasoning="LLM analysis encountered an error",
+                recommendations=["Please check LLM configuration and try again"]
+            )
