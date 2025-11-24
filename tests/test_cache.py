@@ -163,6 +163,28 @@ class TestGetOrCompute:
         assert result2 == "computed_1"
         assert call_count == 1  # Not called again
 
+    def test_cache_empty_values(self, cache):
+        """Test that empty values (but not None) are cached correctly."""
+        # Test empty list
+        cache.set("empty_list", [])
+        assert cache.get("empty_list") == []
+
+        # Test empty dict
+        cache.set("empty_dict", {})
+        assert cache.get("empty_dict") == {}
+
+        # Test empty string
+        cache.set("empty_string", "")
+        assert cache.get("empty_string") == ""
+
+        # Test False boolean
+        cache.set("false_value", False)
+        assert cache.get("false_value") is False
+
+        # Test zero
+        cache.set("zero", 0)
+        assert cache.get("zero") == 0
+
 
 class TestCacheKeyHashing:
     """Test cache key hashing functionality."""
