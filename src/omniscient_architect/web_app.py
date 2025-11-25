@@ -11,7 +11,6 @@ from github import GithubException
 
 from omniscient_architect.github_client import GitHubClient, create_repository_info_from_github
 from omniscient_architect.agents import (
-    GitHubRepositoryAgent,
     ArchitectureAgent,
     EfficiencyAgent,
     ReliabilityAgent,
@@ -327,12 +326,27 @@ class StreamlitApp:
             'efficiency': EfficiencyAgent,
             'reliability': ReliabilityAgent,
             'alignment': AlignmentAgent,
-            'repo-health': GitHubRepositoryAgent,
         }
         if focus:
-            agents = [full_map[key](self.analysis_engine.llm) for key in focus if key in full_map]
+            agents = [
+                full_map[key](
+                    self.analysis_engine.llm,
+                    name=key.capitalize() + "Agent",
+                    description=f"{key.capitalize()} analysis agent",
+                    analysis_focus=key
+                )
+                for key in focus if key in full_map
+            ]
         else:
-            agents = [cls(self.analysis_engine.llm) for cls in full_map.values()]
+            agents = [
+                cls(
+                    self.analysis_engine.llm,
+                    name=key.capitalize() + "Agent",
+                    description=f"{key.capitalize()} analysis agent",
+                    analysis_focus=key
+                )
+                for key, cls in full_map.items()
+            ]
 
         # Ingest real files
         files = await self.analysis_engine._ingest_files(repo_info)

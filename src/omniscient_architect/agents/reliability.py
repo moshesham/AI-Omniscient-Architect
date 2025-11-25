@@ -26,4 +26,5 @@ class ReliabilityAgent(BaseAIAgent):
         objective = repo_info.project_objective or "Analyze reliability, error handling, and testing coverage."
         files_info = self.prepare_files_context(files)
         response = await self.call_llm(context, objective, files_info)
+        response.agent_name = self.name
         return response

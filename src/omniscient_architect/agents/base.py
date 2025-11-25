@@ -12,6 +12,7 @@ from ..models import AgentFindings, FileAnalysis, RepositoryInfo
 
 class AgentResponse(BaseModel):
     """Structured response from an AI agent."""
+    agent_name: str = Field(description="Name of the agent that produced the findings")
     findings: List[str] = Field(description="List of key findings from the analysis")
     confidence: float = Field(description="Confidence score between 0 and 1", ge=0.0, le=1.0)
     reasoning: str = Field(description="Detailed reasoning for the findings")
@@ -40,7 +41,7 @@ class BaseAIAgent(ABC):
         self.analysis_focus = analysis_focus
         self.stream_callback: Optional[Callable[[str, str], None]] = None
         self.prompt_template = PromptTemplate(
-            template=self._get_prompt_template(),
+            template=self.get_prompt_template(),
             input_variables=["context", "objective", "files_info", "format_instructions"],
         )
         self.output_parser = PydanticOutputParser(pydantic_object=AgentResponse)
@@ -103,6 +104,7 @@ class BaseAIAgent(ABC):
             return response
         except Exception as e:
             return AgentResponse(
+                agent_name=self.name,
                 findings=[f"Analysis failed due to: {str(e)}"],
                 confidence=0.0,
                 reasoning="LLM analysis encountered an error",

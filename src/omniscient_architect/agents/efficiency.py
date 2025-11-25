@@ -26,4 +26,5 @@ class EfficiencyAgent(BaseAIAgent):
         objective = repo_info.project_objective or "Analyze code efficiency and identify performance optimizations."
         files_info = self.prepare_files_context(files)
         response = await self.call_llm(context, objective, files_info)
+        response.agent_name = self.name
         return response
