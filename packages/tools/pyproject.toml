@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omniscient-tools"
+version = "0.1.0"
+description = "Analysis tools for Omniscient Architect"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "AI Omniscient Architect Team", email = "ai-team@example.com"},
+]
+keywords = ["code-analysis", "complexity", "clustering", "tools"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "omniscient-core>=0.1.0",
+    "lizard>=1.17.0",
+    "blake3>=0.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "mypy>=1.7.0",
+]
+clustering = [
+    "scikit-learn>=1.3.0",
+    "numpy>=1.24.0",
+]
+parsing = [
+    "tree-sitter>=0.20.0",
+]
+
+[tool.setuptools]
+packages = ["omniscient_tools"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+omniscient_tools = ["py.typed"]

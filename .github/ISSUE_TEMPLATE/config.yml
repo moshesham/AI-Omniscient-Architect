@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/moshesham/AI-Omniscient-Architect#readme
+    about: Check the README for usage and setup instructions
+  - name: Discussions
+    url: https://github.com/moshesham/AI-Omniscient-Architect/discussions
+    about: Ask questions and share ideas

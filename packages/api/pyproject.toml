@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omniscient-api"
+version = "0.1.0"
+description = "REST and GraphQL API for Omniscient Architect - Code review as a service"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Omniscient Architect Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Framework :: FastAPI",
+]
+keywords = ["api", "rest", "graphql", "code-review", "fastapi"]
+
+dependencies = [
+    "omniscient-core>=0.1.0",
+    "omniscient-agents>=0.1.0",
+    "omniscient-tools>=0.1.0",
+    "omniscient-github>=0.1.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.0.0",
+    "python-multipart>=0.0.6",
+]
+
+[project.optional-dependencies]
+graphql = [
+    "strawberry-graphql>=0.211.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.25.0",
+]
+all = [
+    "omniscient-api[graphql,dev]",
+]
+
+[project.scripts]
+omniscient-api = "omniscient_api.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/omniscient-architect/omniscient-architect"
+Documentation = "https://omniscient-architect.github.io/docs/packages/api"
+Repository = "https://github.com/omniscient-architect/omniscient-architect"
+Issues = "https://github.com/omniscient-architect/omniscient-architect/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

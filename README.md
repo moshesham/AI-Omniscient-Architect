@@ -1,547 +1,309 @@
-# 🧠 Omniscient Architect - Elite-Level Code Review System
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python 3.9+">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License">
+  <img src="https://img.shields.io/badge/LLM-Ollama-orange.svg" alt="Ollama">
+  <img src="https://img.shields.io/badge/UI-Streamlit-red.svg" alt="Streamlit">
+</p>
 
-## Overview
+<h1 align="center">🏗️ Omniscient Architect</h1>
 
-The **Omniscient Architect** is an advanced, AI-powered code review system that combines the capabilities of a Senior Staff Engineer, Product Manager, and Strategic CTO. It performs forensic, multi-perspective analysis of codebases to identify strengths, weaknesses, and strategic opportunities.
+<p align="center">
+  <strong>AI-Powered Code Analysis Platform with Local LLM Support</strong>
+</p>
 
-## Features
+<p align="center">
+  Analyze codebases using local AI models for privacy-first, intelligent code review.<br/>
+  No data leaves your machine. No API costs. Full control.
+</p>
 
-### Three-Phase Analysis Protocol
+---
 
-#### Phase 1: Ingestion & Deconstruction
-- **Code Scanning**: Analyzes file structure, languages, and complexity
-- **Objective Analysis**: Deconstructs project objectives into technical components
-- **Statistics Generation**: Provides comprehensive codebase metrics
+## ✨ Features
 
-#### Phase 2: Multi-Agent Simulation
-The system simulates four specialist sub-agents:
+| Feature | Description |
+|---------|-------------|
+| 🔒 **Privacy-First** | All analysis runs locally via Ollama - your code never leaves your machine |
+| 🤖 **Multi-Provider LLM** | Support for Ollama, OpenAI, and Anthropic with automatic fallback |
+| 📊 **Smart Analysis** | Security vulnerabilities, architecture patterns, code quality, best practices |
+| 🌐 **Web UI** | Beautiful Streamlit interface for interactive analysis |
+| 📦 **Modular Architecture** | Six independent packages for flexibility and extensibility |
+| ⚡ **Parallel Execution** | Concurrent agent analysis with progress streaming |
+| 🐙 **GitHub Integration** | Analyze repositories directly from GitHub URLs |
 
-- **Agent Alpha (Architecture)**: Reviews file structure, design patterns, and scalability
-- **Agent Beta (Efficiency & Logic)**: Identifies complexity issues, redundant code, and performance bottlenecks
-- **Agent Gamma (Reliability & Security)**: Examines error handling, edge cases, and security vulnerabilities
-- **Agent Delta (Alignment)**: Validates that code achieves the stated business objectives
+---
 
-#### Phase 3: Strategic Gap Analysis
-- Compares current state vs. ideal state
-- Identifies critical gaps in architecture, testing, documentation
-- Provides actionable recommendations
-
-## Installation
-
-### Requirements
-- Python 3.7+
-- GitHub token (optional, for higher rate limits)
-- Ollama (for AI analysis)
-
-### Install Dependencies
-```bash
-# Install required packages
-pip install langchain ollama httpx structlog rich streamlit PyGitHub
-```
-
-### Setup Ollama (for AI Analysis)
-```bash
-# Install Ollama
-curl -fsSL https://ollama.ai/install.sh | sh
-
-# Pull a code analysis model
-ollama pull codellama:7b-instruct
-```
-
-## Docker Deployment
-
-The Omniscient Architect can be easily deployed using Docker for consistent environments and simplified setup.
-
-### Containerized workflow (dev vs prod)
-
-This repo ships with two Compose files:
-
-- `docker-compose.yml` (production-friendly): builds the app image and runs without mounting source code.
-- `docker-compose.dev.yml` (developer experience): mounts the project folder into the container for instant reloads.
-
-Common commands (using the modern `docker compose` syntax):
-
-```powershell
-# Development: runs app + Ollama, mounts source into /app
-docker compose -f docker-compose.dev.yml up --build -d
-
-# Production-like: runs app + Ollama without host mounts
-docker compose up --build -d
-
-# Check health (Streamlit)
-Invoke-WebRequest -UseBasicParsing http://localhost:8501/_stcore/health | Select-Object StatusCode
-
-# Tail logs
-docker compose logs -f app
-```
-
-Notes:
-- Streamlit is bound to 0.0.0.0:8501 in the container; the app is exposed on host port 8501.
-- Healthchecks target `/_stcore/health` for reliable 200 responses.
-- Ollama runs at `http://ollama:11434` inside the app container (mapped to `localhost:11434` on the host).
+## 🚀 Quick Start
 
 ### Prerequisites
-- Docker and Docker Compose installed on your system
-- At least 8GB RAM recommended for AI model inference
 
-### Quick Start with Docker Compose
+- Python 3.9+
+- [Ollama](https://ollama.ai) installed and running
+
+### Installation
 
 ```bash
 # Clone the repository
 git clone https://github.com/moshesham/AI-Omniscient-Architect.git
 cd AI-Omniscient-Architect
 
-# Start the application with Ollama
-docker-compose up -d
+# Create virtual environment
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Linux/Mac
 
-# View logs
-docker-compose logs -f app
+# Install dependencies
+pip install -r requirements.txt
+
+# Pull a code-focused model
+ollama pull qwen2.5-coder:1.5b
 ```
 
-The application will be available at `http://localhost:8501`
-
-### Manual Docker Setup
-
-If you prefer to run components separately:
+### Launch the Web UI
 
 ```bash
-# 1. Start Ollama service
-docker run -d --name ollama -p 11434:11434 ollama/ollama
-
-# 2. Pull the AI model
-docker exec ollama ollama pull codellama:7b-instruct
-
-# 3. Build and run the application
-docker build -t omniscient-architect .
-docker run -d --name omniscient-architect-app \
-	-p 8501:8501 \
-	--link ollama \
-	-e OLLAMA_HOST=http://ollama:11434 \
-	omniscient-architect
+streamlit run web_app.py
 ```
 
-### Docker Commands
+Open http://localhost:8501 in your browser.
+
+---
+
+## 📦 Package Architecture
+
+```
+packages/
+├── omniscient-core     # Base models, configuration, logging
+├── omniscient-llm      # Multi-provider LLM abstraction layer
+├── omniscient-agents   # AI analysis agents with orchestration
+├── omniscient-tools    # Code complexity, clustering, file scanning
+├── omniscient-github   # GitHub API client with rate limiting
+└── omniscient-api      # FastAPI REST/GraphQL server
+```
+
+### Package Overview
+
+| Package | Purpose | Key Components |
+|---------|---------|----------------|
+| `omniscient-core` | Foundation | `FileAnalysis`, `RepositoryInfo`, `AnalysisConfig` |
+| `omniscient-llm` | LLM Integration | `OllamaProvider`, `OpenAIProvider`, `ProviderChain` |
+| `omniscient-agents` | Analysis | `CodeReviewAgent`, `AnalysisOrchestrator` |
+| `omniscient-tools` | Utilities | `ComplexityAnalyzer`, `FileScanner`, `Clustering` |
+| `omniscient-github` | GitHub | `GitHubClient`, `RateLimitHandler` |
+| `omniscient-api` | API Server | FastAPI routes, GraphQL schema |
+
+---
+
+## 🖥️ Usage
+
+### Web Interface (Recommended)
+
+The Streamlit UI provides the easiest way to analyze code:
+
+1. **Check Ollama Status** - Verify your LLM is running
+2. **Select Model** - Choose from available Ollama models
+3. **Choose Focus Areas** - Security, Architecture, Code Quality, etc.
+4. **Analyze** - Point to a local directory or GitHub URL
+
+### Programmatic Usage
+
+```python
+import asyncio
+from omniscient_llm import OllamaProvider, LLMClient
+from omniscient_agents.llm_agent import CodeReviewAgent
+from omniscient_core import FileAnalysis, RepositoryInfo
+
+async def analyze_code():
+    # Setup LLM
+    provider = OllamaProvider(model="qwen2.5-coder:1.5b")
+    client = LLMClient(provider=provider)
+    
+    async with client:
+        # Create agent
+        agent = CodeReviewAgent(
+            llm_client=client,
+            focus_areas=["security", "architecture"]
+        )
+        
+        # Prepare files
+        files = [
+            FileAnalysis(
+                path="main.py",
+                content="your code here",
+                language="Python",
+                size=100
+            )
+        ]
+        
+        repo = RepositoryInfo(
+            path="./my-project",
+            name="my-project",
+            branch="main"
+        )
+        
+        # Run analysis
+        result = await agent.analyze(files, repo)
+        print(result.summary)
+
+asyncio.run(analyze_code())
+```
+
+### LLM CLI Tool
 
 ```bash
-# Stop all services
-docker-compose down
+# Check Ollama status
+python -m omniscient_llm status
 
-# Rebuild after code changes
-docker-compose up --build
+# List available models
+python -m omniscient_llm list
 
-# View running containers
-docker-compose ps
+# Pull a new model
+python -m omniscient_llm pull codellama:7b-instruct
 
-# Access container logs
-docker-compose logs app
-docker-compose logs ollama
+# Get model recommendations
+python -m omniscient_llm recommend --category code
+```
 
-# Clean up (removes volumes too)
-docker-compose down -v
+---
+
+## 🐳 Docker Deployment
+
+```bash
+# Development (with hot reload)
+docker compose -f docker-compose.dev.yml up --build
+
+# Production
+docker compose up --build -d
+
+# Check health
+curl http://localhost:8501/_stcore/health
 ```
 
 ### Configuration
 
-The Docker setup includes:
-- **Ollama Container**: Runs the AI inference service on port 11434
-- **App Container**: Runs the Streamlit web interface on port 8501
-- **Volume Persistence**: AI models are cached in a Docker volume
-- **Health Checks**: Automatic container health monitoring
-
-### App configuration (config.yaml)
-
-Use `config.yaml` at the repo root to tune analysis behavior. Environment variables override file values.
-
-Supported keys:
-- `max_file_size_mb` (int): Maximum file size to ingest (default 10).
-- `max_files` (int): Cap on number of files scanned (default 1000).
-- `include_patterns` (list): Glob patterns to include (e.g., `['*.py','*.ts']`).
-- `exclude_patterns` (list): Folders/patterns to skip (e.g., `['.git','node_modules']`).
-- `ollama_model` (str): Model name, e.g., `codellama:7b-instruct`.
-- `analysis_depth` (str): One of `quick|standard|deep`.
-
-Environment overrides:
-- `OLLAMA_MODEL`, `MAX_FILE_SIZE_MB`, `MAX_FILES`, `ANALYSIS_DEPTH`.
-
-### Agent selection (UI and CLI)
-
-Agents are registered via a simple registry and can be enabled/disabled at runtime.
-
-- In the Streamlit UI (sidebar), pick agents under “Agents”. Your selection updates the active run.
-- From CLI, use `--agents` with a comma-separated list of keys:
-
-```powershell
-python omniscient_architect_ai.py . --agents architecture,efficiency,reliability,alignment
-```
-
-Available agent keys include: `architecture`, `efficiency`, `reliability`, `alignment`, `github_repository`.
-
-## Usage
-
-### Command Line Interface
-
-```bash
-# Analyze the current directory
-python omniscient_architect.py .
-
-# Analyze a specific repository
-python omniscient_architect.py /path/to/repository
-```
-
-### Web Interface (Recommended)
-
-The web interface provides an intuitive way to analyze GitHub repositories with a modern UI.
-
-#### Quick Start
-```bash
-# Run the web application
-python run_web_app.py
-
-# Or directly with streamlit
-streamlit run web_app.py
-```
-
-#### Features
-- **Repository Input**: Enter GitHub repository URLs for analysis
-- **Project Objectives**: Provide context for more relevant analysis
-- **Real-time Analysis**: Watch AI agents analyze your code in real-time
-- **Comprehensive Reports**: View detailed findings with confidence scores
-- **Configuration Options**: Customize analysis depth and AI models
-
-#### Web Interface Usage
-1. **Start the App**: Run `python run_web_app.py`
-2. **Configure Settings**: Set your GitHub token and analysis preferences in the sidebar
-3. **Enter Repository**: Paste a GitHub repository URL
-4. **Add Context**: Optionally describe the project's objectives
-5. **Analyze**: Click "Analyze Repository" to start the AI analysis
-6. **Review Results**: Explore the comprehensive analysis report
-
-### With Project Objective
-
-```bash
-# Analyze against a specific objective
-python omniscient_architect.py . --objective "Build a data analytics dashboard"
-
-# More complex objective
-python omniscient_architect.py /path/to/repo --objective "Create a scalable user authentication system with OAuth2 support and role-based access control"
-```
-
-### Save Report to File
-
-```bash
-# Save analysis to markdown file
-python omniscient_architect.py . --output analysis_report.md
-
-# Save with objective
-python omniscient_architect.py . --objective "Your objective here" --output report.md
-```
-
-## Output Format
-
-The tool generates a comprehensive report with the following sections:
-
-### 1. 🎯 Executive Summary & Alignment Check
-- **Project Understanding**: 2-sentence summary of the codebase
-- **Goal Alignment Score (0-100%)**: Quantitative measure of objective alignment
-- **Component Breakdown**: Status of each identified component
-
-### 2. 💪 Strengths (With Evidence)
-- Lists well-implemented features and patterns
-- Provides file-level evidence for each strength
-- Explains why each strength matters
-
-### 3. ⚠️ Critical Review: Weaknesses & Adjustments
-Grouped by category:
-- **Efficiency**: Performance and complexity issues
-- **Accuracy**: Logic and correctness problems
-- **Reliability**: Error handling and security concerns
-
-Each weakness includes:
-- Description of the issue
-- Specific location (file/function)
-- Concrete fix recommendations
-
-### 4. 🧠 The Strategist's Advisor
-- **Scalability**: How to handle 100x growth
-- **Future-Proofing**: Recommended next features
-- **Broader Application**: Potential use cases and adaptations
-
-## Example Report
-
-```
-================================================================================
-🧠 OMNISCIENT ARCHITECT - CODE REVIEW REPORT
-================================================================================
-
-## 1. 🎯 Executive Summary & Alignment Check
-
-### Project Understanding:
-This repository contains 45 files across 3 languages (Python, Markdown, JSON). 
-The codebase appears to be a Streamlit web application with 5,234 lines of code.
-
-### Goal Alignment Score: 75%
-
-### Component Breakdown:
-	• Core Logic: Present (12 files)
-	• Documentation: Present (8 files)
-	• Testing: Missing
-	• Configuration: Present (3 files)
-
-## 2. 💪 Strengths (With Evidence)
-
-**Strength:** Utility/helper modules present
-**Evidence:** Identified by Agent Alpha (Architecture)
-**Why it matters:** This demonstrates adherence to best practices
-
-...
-```
-
-## Use Cases
-
-### For Development Teams
-- **Pre-Release Review**: Comprehensive analysis before major releases
-- **Onboarding**: Help new team members understand codebase structure
-- **Technical Debt**: Identify and prioritize refactoring opportunities
-
-### For Solo Developers
-- **Self-Review**: Get objective feedback on your code
-- **Learning**: Understand best practices through automated analysis
-- **Portfolio Projects**: Ensure code quality before sharing
-
-### For Project Managers
-- **Health Checks**: Regular codebase health assessments
-- **Resource Planning**: Identify areas needing attention
-- **Risk Assessment**: Spot potential issues early
-
-### For Educators
-- **Student Projects**: Provide consistent, detailed feedback
-- **Code Reviews**: Teach code review best practices
-- **Assignment Grading**: Automated initial assessment
-
-## Advanced Features
-
-### Language Support
-
-Currently supports analysis for:
-- Python, JavaScript, TypeScript
-- Java, C++, C, Go, Rust
-- Ruby, PHP
-- HTML, CSS, SQL
-- Markdown, JSON, YAML
-
-### Complexity Analysis
-
-For Python files, the tool calculates complexity based on:
-- Control structures (if, for, while)
-- Exception handling (try/except)
-- Function and class definitions
-
-### Intelligent Filtering
-
-Automatically ignores:
-- Version control directories (.git)
-- Build artifacts (dist, build)
-- Dependencies (node_modules, venv)
-- IDE files (.idea, .vscode)
-- Cache directories (__pycache__, .pytest_cache)
-
-## Customization
-
-### Extending Agent Analysis
-
-The tool is designed to be easily extensible. Each agent method can be enhanced:
-
-```python
-def _agent_alpha_architecture(self, structure: Dict[str, Any]) -> AgentFindings:
-		"""Customize architecture analysis here"""
-		# Add your custom checks
-		pass
-```
-
-### Adding New Languages
-
-Update the `language_patterns` dictionary:
-
-```python
-self.language_patterns = {
-		'.py': 'Python',
-		'.rs': 'Rust',
-		'.your_ext': 'YourLanguage',  # Add here
-}
-```
-
-## Best Practices
-
-### When to Run
-
-- ✅ Before code reviews
-- ✅ After major feature additions
-- ✅ During project planning phases
-- ✅ When evaluating third-party code
-- ❌ Not for real-time development (use linters instead)
-
-### Interpreting Results
-
-- **Alignment Score 80-100%**: Excellent alignment with objectives
-- **Alignment Score 60-79%**: Good but needs improvement
-- **Alignment Score 40-59%**: Significant gaps exist
-- **Alignment Score <40%**: Major rework needed
-
-### Combining with Other Tools
-
-The Omniscient Architect complements but doesn't replace:
-- **Linters** (pylint, eslint): For style and syntax
-- **Testing Frameworks** (pytest, jest): For functional correctness
-- **Security Scanners** (bandit, snyk): For vulnerability detection
-- **Code Coverage** (coverage.py): For test completeness
-
-## Limitations
-
-### Current Limitations
-
-- **Static Analysis Only**: Doesn't execute code
-- **Pattern-Based**: May miss context-specific issues
-- **No NLP Integration**: Objective matching uses simple pattern matching
-- **Sampling**: Complex analysis limited to sample of files for performance
-
-### Not a Replacement For
-
-- Human code review
-- Comprehensive security audits
-- Performance profiling
-- Integration testing
-
-## FAQ
-
-**Q: Does it modify my code?**  
-A: No, it's read-only. It only analyzes and reports.
-
-**Q: How long does analysis take?**  
-A: Typically 10-30 seconds for repositories with <100 files, longer for larger codebases.
-
-**Q: Can I use it in CI/CD?**  
-A: Yes! Save output to a file and parse results in your pipeline.
-
-**Q: What Python version is required?**  
-A: Python 3.7+ (uses dataclasses and type hints)
-
-**Q: Does it send data anywhere?**  
-A: No, all analysis is local. No network calls.
-
-## Contributing
-
-Contributions are welcome! Areas for enhancement:
-
-1. **NLP Integration**: Better objective understanding
-2. **More Languages**: Additional language support
-3. **Visual Reports**: HTML/PDF output formats
-4. **CI/CD Integration**: GitHub Actions, GitLab CI templates
-5. **Diff Analysis**: Analyze only changed files
-
-## License
-
-MIT License - See repository LICENSE file
-
-## Authors
-
-Data Science Analytical Handbook Team
-
-## Acknowledgments
-
-Inspired by the need for comprehensive, automated code review in educational and professional settings.
+| Environment Variable | Description | Default |
+|---------------------|-------------|---------|
+| `OLLAMA_HOST` | Ollama server URL | `http://localhost:11434` |
+| `OLLAMA_MODEL` | Default model | `qwen2.5-coder:1.5b` |
+| `MAX_FILES` | Max files to analyze | `100` |
+| `ANALYSIS_DEPTH` | `quick`, `standard`, `deep` | `standard` |
 
 ---
 
-**Ready to analyze your code?**
+## 🔍 Analysis Capabilities
 
+### What Gets Analyzed
 
-# Data Science Analytical Interview Preparation Handbook
+| Category | Checks |
+|----------|--------|
+| **Security** | SQL injection, XSS, hardcoded secrets, CORS misconfig |
+| **Architecture** | Design patterns, separation of concerns, scalability |
+| **Code Quality** | Complexity, duplication, naming conventions |
+| **Best Practices** | Error handling, logging, documentation |
+| **Performance** | Bottlenecks, caching opportunities, async patterns |
 
-This repository provides a comprehensive handbook designed to assist in preparing for data science analytical interviews, with a specific focus on Meta.
+### Sample Output
 
-## Repository Content and Structure
+```
+📋 Summary:
+The codebase has several security concerns that need immediate attention.
 
-This repository is organized into the following sections and files:
+📊 Issues Found: 3
 
-### 1. Handbook (Data-Science-Analytical-Interview-Preparation-Handbook.MD)
+🔴 [HIGH] Security
+   Hardcoded database credentials found
+   📁 File: api/routes/data.py
+   📍 Line: 20
+   💡 Use environment variables or a secrets manager
 
-This is the core document providing a comprehensive guide to Meta's data science interview process. It covers:
+🟡 [MEDIUM] Architecture  
+   Global state can cause race conditions
+   📁 File: api/routes/data.py
+   💡 Use dependency injection or request-scoped state
 
-* **Introduction:** Overview of Meta's interview process and values.
-* **Foundational Knowledge & Skills:** In-depth review of essential topics including statistics, probability, SQL, and data analysis with Python/R.
-* **Interview-Specific Preparation:** Guidance on tackling each stage of the interview process, from technical screens to behavioral questions.
-* **Analytical Execution/Case Study Interview:** Techniques for data analysis, hypothesis generation, and communication.
-* **Analytical Reasoning/Product Sense Interview:** Strategies for clarifying problems, developing product sense, defining metrics, and designing experiments.
-* **Resources & Communities:** Curated list of learning materials, online communities, and helpful resources.
+🟢 [LOW] Code Quality
+   Missing docstrings in public functions
+   💡 Add docstrings for better maintainability
 
-### 2. Statistics and Probability Examples (Statistics-Probability-Example-Questions.MD)
-
-This file provides detailed examples and solutions to common statistics and probability questions encountered in data science interviews. It covers:
-
-* **Descriptive Statistics:** Questions on measures of central tendency, variability, and data visualization.
-* **Probability:** Questions on Bayes' theorem, probability distributions, and sampling techniques.
-* **Inferential Statistics:** Questions on hypothesis testing, p-values, confidence intervals, and significance testing.
-* **Statistical Modeling:** Questions on regression analysis, A/B testing, and experimentation.
-
-### 3. SQL Example Problems (sql-example-problems.md, sql-example-problems.pdf)
-
-This file presents a collection of complex SQL problems designed to simulate real-world scenarios at Meta. The problems cover a wide range of SQL concepts and techniques, including joins, aggregations, subqueries, window functions, and more.
-
-### 4. Analytical Hands-On Projects (Analytical-HandsOn-Projects/overview.md)
-
-This section provides practical, hands-on experience in data analysis using open-source tools and data. The projects are structured in Jupyter Notebooks and guide you through each step of the analysis process.
-
-### 5. Key Insights and Tips (Key-Insights-Tips-Meta.md)
-
-This document provides a concise summary of key insights and tips for navigating the Meta data science interview process.
-
-### 6. Extra Review Problems (Extra-Review-Problems/*.md)
-
-This section contains additional SQL and analytical problems, including advanced SQL patterns and techniques.
-
-### 7. Future Features (Future_fetures.md)
-
-This file outlines potential additions and improvements to the handbook in the future.
-
-### 8. GitHub Pages
-
-The GitHub Pages for this repository is available at: [GitHub Pages URL](https://moshesham.github.io/Data-Science-Analytical-Handbook/)
-
-### 9. 🧠 Omniscient Architect - Code Review Tool (NEW!)
-
-An elite-level AI code review system that performs forensic, multi-perspective analysis of codebases. This tool simulates four specialist sub-agents (Architecture, Efficiency, Reliability, and Alignment) to provide comprehensive code reviews.
-
-**Quick Start:**
-```bash
-# Analyze this repository
-python omniscient_architect.py . --objective "Your project goal"
-
-# Save detailed report
-python omniscient_architect.py . --output review.md
+💡 Recommendations:
+  • Move credentials to environment variables
+  • Implement proper dependency injection
+  • Add comprehensive documentation
 ```
 
-**Documentation:**
-* **Quick Start Guide:** `QUICK_START.md` - Get started in 5 minutes
-* **Full Documentation:** `OMNISCIENT_ARCHITECT_README.md` - Complete feature reference
-* **Sample Report:** `SAMPLE_ANALYSIS_REPORT.md` - See example output
+---
 
-**Use Cases:**
-- Portfolio project reviews before sharing with recruiters
-- Self-assessment for interview preparation projects
-- Learning best practices from code analysis
-- Understanding codebase structure and quality
+## 🛠️ Development
 
-## How to Use This Material
+### Project Structure
 
-1. **Start with the Handbook:** Begin by reading the `Data-Science-Analytical-Interview-Preparation-Handbook.MD` file to gain a comprehensive understanding of Meta's interview process and the key skills assessed.
-2. **Review Foundational Knowledge:** Use the handbook and the `Statistics-Probability-Example-Questions.MD` file to review and strengthen your understanding of core statistical concepts.
-3. **Practice SQL:** Work through the problems in the `sql-example-problems.md` or `sql-example-problems.pdf` file to hone your SQL skills.
-4. **Work on Hands-On Projects:** Engage with the projects in the `Analytical-HandsOn-Projects` directory to apply your knowledge in practical scenarios.
-5. **Prepare for Behavioral Questions:** Review the `Behavioral-Mock-Interview.MD` file and practice answering behavioral questions.
-6. **Utilize the Resources:** Explore the curated list of resources in the handbook to further enhance your preparation.
+```
+AI-Omniscient-Architect/
+├── web_app.py           # Streamlit UI
+├── packages/            # Modular packages
+├── scripts/             # Test & utility scripts
+├── docs/                # Documentation
+├── roadmap/             # Development roadmap
+├── examples/            # Usage examples
+├── Dockerfile           # Container definition
+├── docker-compose.yml   # Production compose
+└── requirements.txt     # Dependencies
+```
 
-By following this approach, you can effectively utilize the materials in this repository to prepare for your Meta data science analytical interview. Good luck!
+### Running Tests
 
-## Contributing and Working Together
+```bash
+# Test all packages
+python scripts/test_packages.py
 
-This handbook is a collaborative effort, and contributions are welcome! If you have suggestions, find errors, or want to add more content, please feel free to open an issue or submit a pull request.
+# Test local analysis
+python scripts/test_local_analysis.py
+
+# Test with a specific repo
+python scripts/test_datalake_analysis.py
+```
+
+### Recommended Models
+
+| Model | Size | Best For | Memory |
+|-------|------|----------|--------|
+| `qwen2.5-coder:1.5b` | 1GB | Quick analysis, limited RAM | 2GB |
+| `codellama:7b-instruct` | 4GB | Detailed analysis | 8GB |
+| `deepseek-coder:6.7b` | 4GB | Complex code understanding | 8GB |
+
+---
+
+## 📖 Documentation
+
+- [Development Roadmap](roadmap/PHASE_2_3_PROGRESS.md) - Current progress and future plans
+- [Package Documentation](packages/README.md) - Detailed package docs
+- [API Reference](packages/api/README.md) - REST/GraphQL API docs
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Areas for enhancement:
+
+- 🌐 Additional LLM providers
+- 📊 More analysis agents (testing, documentation)
+- 🔌 IDE extensions (VS Code, JetBrains)
+- 📈 Metrics and reporting dashboards
+- 🔄 CI/CD integration templates
+
+---
+
+## 📄 License
+
+MIT License - See [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">
+  <strong>Built with ❤️ for developers who value privacy and code quality</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/moshesham/AI-Omniscient-Architect/issues">Report Bug</a>
+  ·
+  <a href="https://github.com/moshesham/AI-Omniscient-Architect/issues">Request Feature</a>
+</p>
