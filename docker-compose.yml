@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  # PostgreSQL + pgvector for RAG storage
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: omniscient-architect-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: omniscient
+      POSTGRES_USER: omniscient
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omniscient -d omniscient"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   # Ollama service for AI model inference (pinned tag for stability)
   ollama:
     image: ollama/ollama:0.13.0
@@ -10,6 +30,8 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     restart: unless-stopped
+    # Pull embedding model on startup
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull nomic-embed-text && wait"]
 
   # Main application service (production-friendly: no host mounts)
   app:
@@ -19,8 +41,13 @@ services:
       - "8501:8501"
     environment:
       - OLLAMA_HOST=http://ollama:11434
+      - DATABASE_URL=postgresql://omniscient:${POSTGRES_PASSWORD:-localdev}@postgres:5432/omniscient
+      - EMBEDDING_MODEL=nomic-embed-text
     depends_on:
-      - ollama
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8501/_stcore/health || exit 1"]
@@ -28,6 +55,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    volumes:
+      # Mount for knowledge base uploads
+      - knowledge_data:/app/knowledge
 
 volumes:
+  postgres_data:
   ollama_data:
+  knowledge_data:

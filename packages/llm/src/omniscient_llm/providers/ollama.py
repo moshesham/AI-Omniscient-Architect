@@ -1,5 +1,6 @@
 """Ollama LLM provider for local model execution."""
 
+import asyncio
 import time
 from typing import AsyncIterator, List, Optional
 import httpx
@@ -380,3 +381,120 @@ class OllamaProvider(BaseLLMProvider):
             
         except Exception as e:
             raise GenerationError("ollama", f"Failed to pull model: {e}", e)
+    
+    # =========================================================================
+    # Embedding Support for RAG
+    # =========================================================================
+    
+    async def embed(
+        self,
+        text: str,
+        model: Optional[str] = None,
+    ) -> List[float]:
+        """Generate embedding for a single text.
+        
+        Args:
+            text: Text to embed
+            model: Embedding model (default: nomic-embed-text)
+            
+        Returns:
+            List of floats (embedding vector)
+        """
+        if not self._client:
+            await self.initialize()
+        
+        embed_model = model or "nomic-embed-text"
+        
+        try:
+            response = await self._client.post(  # type: ignore
+                "/api/embeddings",
+                json={
+                    "model": embed_model,
+                    "prompt": text,
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            return data.get("embedding", [])
+            
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                raise ModelNotFoundError(embed_model, "ollama")
+            raise GenerationError("ollama", f"Embedding failed: {e}", e)
+        except Exception as e:
+            raise GenerationError("ollama", f"Embedding failed: {e}", e)
+    
+    async def embed_batch(
+        self,
+        texts: List[str],
+        model: Optional[str] = None,
+        batch_size: int = 32,
+        max_concurrency: int = 5,
+    ) -> List[List[float]]:
+        """Generate embeddings for multiple texts with concurrent processing.
+        
+        Args:
+            texts: List of texts to embed
+            model: Embedding model (default: nomic-embed-text)
+            batch_size: Number of texts per batch
+            max_concurrency: Max concurrent embedding requests
+            
+        Returns:
+            List of embedding vectors
+        """
+        if not self._client:
+            await self.initialize()
+        
+        embed_model = model or "nomic-embed-text"
+        embeddings: List[Optional[List[float]]] = [None] * len(texts)
+        
+        # Semaphore to limit concurrency
+        semaphore = asyncio.Semaphore(max_concurrency)
+        
+        async def embed_with_index(idx: int, text: str) -> tuple[int, List[float]]:
+            """Embed single text with concurrency limit."""
+            async with semaphore:
+                embedding = await self.embed(text, embed_model)
+                return idx, embedding
+        
+        # Process in batches with concurrent embedding within each batch
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
+            batch_indices = list(range(i, i + len(batch)))
+            
+            # Create tasks for concurrent embedding
+            tasks = [
+                embed_with_index(idx, text) 
+                for idx, text in zip(batch_indices, batch)
+            ]
+            
+            # Run batch concurrently
+            results = await asyncio.gather(*tasks)
+            
+            # Store results in correct order
+            for idx, embedding in results:
+                embeddings[idx] = embedding
+            
+            logger.debug(f"Embedded batch {i//batch_size + 1}, total: {i + len(batch)}/{len(texts)}")
+        
+        return [e for e in embeddings if e is not None]  # type: ignore
+    
+    async def get_embedding_models(self) -> List[str]:
+        """Get list of available embedding models.
+        
+        Returns:
+            List of model names that support embeddings
+        """
+        models = await self.list_models()
+        
+        # Known embedding models in Ollama
+        embedding_models = []
+        embedding_keywords = ['embed', 'nomic', 'mxbai', 'all-minilm', 'bge']
+        
+        for model in models:
+            name_lower = model.name.lower()
+            if any(kw in name_lower for kw in embedding_keywords):
+                embedding_models.append(model.name)
+        
+        return embedding_models
