@@ -5,9 +5,9 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add package paths
-packages_dir = Path(__file__).parent / "packages"
-for pkg in ["core", "agents", "tools", "github", "api", "llm"]:
+# Add package paths (packages/ is sibling to scripts/)
+packages_dir = Path(__file__).parent.parent / "packages"
+for pkg in ["core", "agents", "tools", "github", "api", "llm", "rag"]:
     src_path = packages_dir / pkg / "src"
     if src_path.exists():
         sys.path.insert(0, str(src_path))
