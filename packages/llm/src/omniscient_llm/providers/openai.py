@@ -16,7 +16,6 @@ from ..models import (
     ProviderType,
 )
 from ..errors import (
-    ProviderUnavailable,
     RateLimitError,
     AuthenticationError,
     GenerationError,

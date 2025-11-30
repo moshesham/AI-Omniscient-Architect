@@ -43,7 +43,7 @@ def main():
     )
     
     # Version command
-    version_parser = subparsers.add_parser("version", help="Show version")
+    subparsers.add_parser("version", help="Show version")
     
     args = parser.parse_args()
     

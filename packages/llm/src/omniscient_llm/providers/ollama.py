@@ -18,7 +18,6 @@ from ..models import (
     ProviderType,
 )
 from ..errors import (
-    ProviderUnavailable,
     ModelNotFoundError,
     GenerationError,
     TimeoutError,

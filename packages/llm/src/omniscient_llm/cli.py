@@ -6,7 +6,7 @@ from typing import Optional
 
 import click
 
-from omniscient_llm.manager import ModelManager, PullProgress
+from omniscient_llm.manager import ModelManager
 
 
 def run_async(coro):

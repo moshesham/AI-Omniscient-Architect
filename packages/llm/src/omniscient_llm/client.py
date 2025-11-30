@@ -1,7 +1,7 @@
 """LLM Client - Main interface for LLM operations."""
 
 import time
-from typing import AsyncIterator, Optional, Union, List
+from typing import AsyncIterator, Optional, List
 
 from omniscient_core.logging import get_logger
 
@@ -200,7 +200,9 @@ class LLMClient:
                     import asyncio
                     await asyncio.sleep(delay)
         
-        raise last_error  # type: ignore
+        if last_error is not None:
+            raise last_error
+        raise LLMError("Generation failed after all retries")
     
     async def list_models(self) -> List[ModelInfo]:
         """List available models from the provider.

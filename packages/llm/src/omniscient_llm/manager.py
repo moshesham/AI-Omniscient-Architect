@@ -1,9 +1,7 @@
 """Model manager for local LLM models via Ollama."""
 
-import asyncio
 from typing import Callable, Optional, AsyncIterator
 from dataclasses import dataclass
-from datetime import datetime
 
 from omniscient_core.logging import get_logger
 

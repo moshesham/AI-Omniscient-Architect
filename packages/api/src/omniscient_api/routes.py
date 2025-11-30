@@ -5,7 +5,6 @@ from datetime import datetime
 import uuid
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, BackgroundTasks
-from fastapi.responses import JSONResponse
 
 from omniscient_core.logging import get_logger
 from .models import (
@@ -216,9 +215,6 @@ async def analyze_files(
     a GitHub repository.
     """
     analysis_id = str(uuid.uuid4())
-    
-    # Parse agents
-    agent_list = agents.split(",") if agents else None
     
     # Read file contents
     file_contents = {}

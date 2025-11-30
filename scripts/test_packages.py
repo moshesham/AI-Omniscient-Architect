@@ -88,14 +88,14 @@ def test_tools_package():
     print("Testing omniscient-tools...")
     
     from omniscient_tools import (
-        ComplexityAnalyzer,
         AnalysisCache,
         FileScanner,
     )
     
     # Test complexity analyzer (may require lizard)
     try:
-        analyzer = ComplexityAnalyzer()
+        from omniscient_tools import ComplexityAnalyzer
+        ComplexityAnalyzer()
         print("  ✓ ComplexityAnalyzer works (lizard installed)")
     except ImportError:
         print("  ⚠ ComplexityAnalyzer skipped (lizard not installed)")
