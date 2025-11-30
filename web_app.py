@@ -14,7 +14,7 @@ import streamlit as st
 
 # Add package paths for development
 packages_dir = Path(__file__).parent / "packages"
-for pkg in ["core", "agents", "tools", "github", "api", "llm"]:
+for pkg in ["core", "agents", "tools", "github", "api", "llm", "rag"]:
     src_path = packages_dir / pkg / "src"
     if src_path.exists():
         sys.path.insert(0, str(src_path))
@@ -23,6 +23,15 @@ for pkg in ["core", "agents", "tools", "github", "api", "llm"]:
 from omniscient_core import FileAnalysis, RepositoryInfo
 from omniscient_llm import OllamaProvider, LLMClient, ModelManager
 from omniscient_agents.llm_agent import CodeReviewAgent
+
+# Try to import RAG components
+try:
+    from omniscient_rag import RAGPipeline, RAGConfig, ChunkerFactory
+    from omniscient_rag.store import PostgresVectorStore, DatabaseConfig
+    from omniscient_rag.metrics import KnowledgeScorer
+    HAS_RAG = True
+except ImportError:
+    HAS_RAG = False
 
 # =============================================================================
 # Page Configuration
@@ -211,6 +220,13 @@ def init_session_state():
         'analysis_time': None,
         'focus_areas': ['security', 'architecture', 'code quality', 'best practices'],
         'max_files': 15,
+        # RAG Knowledge Base state
+        'rag_initialized': False,
+        'knowledge_stats': None,
+        'knowledge_score': None,
+        'chunking_strategy': 'auto',
+        'chunk_size': 512,
+        'hybrid_alpha': 0.5,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -695,7 +711,7 @@ def main():
     render_sidebar()
     
     # Main content with tabs
-    tab1, tab2 = st.tabs(["📁 Local Analysis", "🐙 GitHub Analysis"])
+    tab1, tab2, tab3 = st.tabs(["📁 Local Analysis", "🐙 GitHub Analysis", "📚 Knowledge Base"])
     
     with tab1:
         render_local_analysis()
@@ -703,8 +719,315 @@ def main():
     with tab2:
         render_github_analysis()
     
+    with tab3:
+        render_knowledge_base()
+    
     # Results section
     render_results()
+
+
+def render_knowledge_base():
+    """Render the Knowledge Base / RAG section."""
+    st.markdown("### 📚 Knowledge Base")
+    st.markdown("Upload domain-specific documentation to enhance AI analysis with expert knowledge.")
+    
+    if not HAS_RAG:
+        st.warning("⚠️ RAG module not available. Install with: `pip install omniscient-rag`")
+        return
+    
+    # Check database connection
+    import os
+    db_url = os.getenv("DATABASE_URL", "postgresql://omniscient:localdev@localhost:5432/omniscient")
+    
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        st.markdown("#### 📊 Knowledge Base Status")
+    
+    with col2:
+        if st.button("🔄 Refresh", key="refresh_kb"):
+            asyncio.run(refresh_knowledge_stats(db_url))
+    
+    # Display stats
+    stats = st.session_state.get('knowledge_stats')
+    if stats:
+        metric_cols = st.columns(4)
+        with metric_cols[0]:
+            st.metric("Documents", stats.get('documents', 0))
+        with metric_cols[1]:
+            st.metric("Chunks", stats.get('chunks', 0))
+        with metric_cols[2]:
+            st.metric("Test Questions", stats.get('knowledge_questions', 0))
+        with metric_cols[3]:
+            latest = stats.get('latest_score', {})
+            score = latest.get('overall', 0) if latest else 0
+            st.metric("Knowledge Score", f"{score:.1f}%")
+    else:
+        st.info("Click 'Refresh' to load knowledge base statistics.")
+    
+    st.markdown("---")
+    
+    # Ingestion Section
+    st.markdown("#### 📥 Ingest Documents")
+    
+    # Chunking strategy selection
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.session_state['chunking_strategy'] = st.selectbox(
+            "Chunking Strategy",
+            options=['auto', 'fixed', 'semantic', 'ast'],
+            index=['auto', 'fixed', 'semantic', 'ast'].index(st.session_state['chunking_strategy']),
+            help="""
+            **auto**: Auto-detect based on file type (recommended)
+            **fixed**: Token-based with fixed size
+            **semantic**: Split by headings/paragraphs
+            **ast**: Split by code structure (functions/classes)
+            """
+        )
+    
+    with col2:
+        st.session_state['chunk_size'] = st.select_slider(
+            "Chunk Size (tokens)",
+            options=[256, 512, 768, 1024],
+            value=st.session_state['chunk_size'],
+            help="Target size for each chunk"
+        )
+    
+    with col3:
+        st.session_state['hybrid_alpha'] = st.slider(
+            "Hybrid Alpha",
+            min_value=0.0,
+            max_value=1.0,
+            value=st.session_state['hybrid_alpha'],
+            step=0.1,
+            help="0 = BM25 only, 1 = Vector only, 0.5 = balanced"
+        )
+    
+    # Directory input for ingestion
+    ingest_path = st.text_input(
+        "Document Folder",
+        placeholder="C:\\path\\to\\documentation or /path/to/docs",
+        help="Path to folder containing documentation (*.md, *.txt, *.py, etc.)"
+    )
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        if st.button("📥 Ingest Documents", type="primary", use_container_width=True):
+            if ingest_path:
+                path = Path(ingest_path)
+                if path.exists() and path.is_dir():
+                    asyncio.run(ingest_documents(path, db_url))
+                else:
+                    st.error("❌ Invalid directory path")
+            else:
+                st.warning("Please enter a folder path")
+    
+    with col2:
+        if st.button("📊 Evaluate Knowledge", use_container_width=True):
+            asyncio.run(evaluate_knowledge(db_url))
+    
+    st.markdown("---")
+    
+    # Query Section
+    st.markdown("#### 🔍 Query Knowledge Base")
+    
+    query_text = st.text_input(
+        "Ask a question",
+        placeholder="How do I configure Spark executors for optimal performance?",
+        help="Query the knowledge base with natural language"
+    )
+    
+    if st.button("🔎 Search", use_container_width=False) and query_text:
+        asyncio.run(query_knowledge_base(query_text, db_url))
+    
+    # Display query results
+    query_results = st.session_state.get('query_results')
+    if query_results:
+        st.markdown("##### Results")
+        for i, result in enumerate(query_results, 1):
+            with st.expander(f"#{i} - {result.get('source', 'Unknown')} (score: {result.get('score', 0):.3f})"):
+                st.markdown(result.get('content', ''))
+
+
+async def refresh_knowledge_stats(db_url: str):
+    """Refresh knowledge base statistics."""
+    try:
+        store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
+        await store.initialize()
+        stats = await store.get_stats()
+        await store.close()
+        st.session_state['knowledge_stats'] = stats
+        st.session_state['rag_initialized'] = True
+    except Exception as e:
+        st.error(f"Failed to connect to database: {e}")
+        st.session_state['knowledge_stats'] = None
+
+
+async def ingest_documents(path: Path, db_url: str):
+    """Ingest documents from a folder."""
+    model_name = st.session_state.get('selected_model', 'qwen2.5-coder:1.5b')
+    chunking = st.session_state.get('chunking_strategy', 'auto')
+    chunk_size = st.session_state.get('chunk_size', 512)
+    
+    with st.status("📥 Ingesting documents...", expanded=True) as status:
+        try:
+            # Initialize provider for embeddings
+            provider = OllamaProvider(model=model_name)
+            await provider.initialize()
+            
+            # Create pipeline
+            config = RAGConfig(
+                chunking_strategy=chunking,
+                chunk_size=chunk_size,
+                embedding_model="nomic-embed-text",
+                auto_generate_questions=True,
+                questions_per_document=3,
+            )
+            
+            store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
+            chunker = ChunkerFactory.create(chunking, chunk_size)
+            
+            pipeline = RAGPipeline(
+                store=store,
+                chunker=chunker,
+                embed_fn=provider.embed,
+                llm_fn=None,  # Skip question generation without LLM
+                config=config,
+            )
+            
+            await pipeline.initialize()
+            
+            # Progress callback
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            def progress_cb(current, total, filename):
+                progress_bar.progress(current / total)
+                status_text.text(f"Processing: {filename}")
+            
+            # Ingest
+            result = await pipeline.ingest_directory(
+                path,
+                patterns=["*.md", "*.txt", "*.rst", "*.py", "*.yaml", "*.json"],
+                progress_callback=progress_cb,
+            )
+            
+            await pipeline.close()
+            await provider.close()
+            
+            progress_bar.empty()
+            status_text.empty()
+            
+            status.update(label="✅ Ingestion complete!", state="complete")
+            
+            st.success(
+                f"Ingested **{result['successful']}** documents | "
+                f"**{result['total_chunks']}** chunks | "
+                f"**{result['total_questions']}** test questions"
+            )
+            
+            # Refresh stats
+            await refresh_knowledge_stats(db_url)
+            
+        except Exception as e:
+            status.update(label="❌ Ingestion failed", state="error")
+            st.error(f"Error: {e}")
+
+
+async def evaluate_knowledge(db_url: str):
+    """Run on-demand knowledge evaluation."""
+    model_name = st.session_state.get('selected_model', 'qwen2.5-coder:1.5b')
+    
+    with st.status("📊 Evaluating knowledge...", expanded=True) as status:
+        try:
+            provider = OllamaProvider(model=model_name)
+            await provider.initialize()
+            
+            store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
+            await store.initialize()
+            
+            # Create a simple embed function
+            async def embed_fn(text):
+                return await provider.embed(text)
+            
+            from omniscient_rag.search import HybridSearcher
+            searcher = HybridSearcher(store, embed_fn)
+            
+            async def llm_fn(prompt):
+                from omniscient_llm.models import GenerationRequest
+                response = await provider.generate(GenerationRequest(prompt=prompt))
+                return response.content
+            
+            scorer = KnowledgeScorer(store, searcher, llm_fn)
+            score = await scorer.evaluate()
+            
+            await store.close()
+            await provider.close()
+            
+            st.session_state['knowledge_score'] = score
+            
+            status.update(label="✅ Evaluation complete!", state="complete")
+            
+            # Display score
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Overall Score", f"{score.overall_score:.1f}%")
+            with col2:
+                st.metric("Retrieval Precision", f"{score.retrieval_precision:.1%}")
+            with col3:
+                st.metric("Answer Accuracy", f"{score.answer_accuracy:.1f}")
+            with col4:
+                st.metric("Coverage", f"{score.coverage_ratio:.1%}")
+            
+        except Exception as e:
+            status.update(label="❌ Evaluation failed", state="error")
+            st.error(f"Error: {e}")
+
+
+async def query_knowledge_base(query: str, db_url: str):
+    """Query the knowledge base."""
+    model_name = st.session_state.get('selected_model', 'qwen2.5-coder:1.5b')
+    alpha = st.session_state.get('hybrid_alpha', 0.5)
+    
+    with st.spinner("🔍 Searching..."):
+        try:
+            provider = OllamaProvider(model=model_name)
+            await provider.initialize()
+            
+            store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
+            await store.initialize()
+            
+            async def embed_fn(text):
+                return await provider.embed(text)
+            
+            from omniscient_rag.search import HybridSearcher, SearchConfig
+            searcher = HybridSearcher(
+                store,
+                embed_fn,
+                SearchConfig(top_k=5, alpha=alpha),
+            )
+            
+            results = await searcher.search(query)
+            
+            await store.close()
+            await provider.close()
+            
+            # Store results
+            st.session_state['query_results'] = [
+                {
+                    'source': r.source,
+                    'content': r.chunk.content,
+                    'score': r.combined_score,
+                    'vector_score': r.vector_score,
+                    'bm25_score': r.bm25_score,
+                }
+                for r in results
+            ]
+            
+        except Exception as e:
+            st.error(f"Query failed: {e}")
 
 
 if __name__ == "__main__":

@@ -29,3 +29,43 @@ ollama_model: "codellama:7b-instruct"
 
 # Analysis depth: quick, standard, deep
 analysis_depth: "standard"
+
+# =============================================================================
+# RAG / Knowledge Base Settings
+# =============================================================================
+
+rag:
+  # Chunking strategy: auto, fixed, semantic, ast
+  chunking_strategy: "auto"
+  
+  # Target chunk size in tokens
+  chunk_size: 512
+  
+  # Overlap ratio between chunks (0-1)
+  chunk_overlap: 0.1
+  
+  # Embedding model for vector search
+  embedding_model: "nomic-embed-text"
+  
+  # Vector dimensions (768 for nomic-embed-text)
+  embedding_dimensions: 768
+  
+  # Number of results for retrieval
+  top_k: 5
+  
+  # Hybrid search alpha (0=BM25 only, 1=vector only, 0.5=balanced)
+  hybrid_alpha: 0.5
+  
+  # Auto-generate test questions on ingestion
+  auto_generate_questions: true
+  
+  # Number of questions per document
+  questions_per_document: 3
+
+# Database configuration (can be overridden by DATABASE_URL env var)
+database:
+  host: "localhost"
+  port: 5432
+  name: "omniscient"
+  user: "omniscient"
+  # password: Set via POSTGRES_PASSWORD env var
