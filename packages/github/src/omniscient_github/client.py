@@ -1,6 +1,5 @@
 """GitHub API client implementation."""
 
-import asyncio
 from typing import Dict, List, Optional, Any
 import httpx
 

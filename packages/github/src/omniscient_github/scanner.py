@@ -1,6 +1,5 @@
 """Repository scanner for discovering and filtering files."""
 
-import asyncio
 import fnmatch
 import time
 from typing import List, Optional, Set
@@ -9,7 +8,7 @@ from pathlib import Path
 from omniscient_core.logging import get_logger
 from omniscient_core import FileAnalysis
 from .client import GitHubClient
-from .models import GitHubRepo, GitHubFile, ScanResult, GitHubConfig
+from .models import GitHubRepo, ScanResult, GitHubConfig
 
 logger = get_logger(__name__)
 

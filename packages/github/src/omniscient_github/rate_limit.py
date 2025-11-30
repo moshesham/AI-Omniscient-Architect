@@ -2,7 +2,6 @@
 
 import asyncio
 import time
-from datetime import datetime
 from typing import Optional, Callable, Any
 
 from omniscient_core.logging import get_logger
@@ -131,15 +130,12 @@ class RateLimitHandler:
         Raises:
             RateLimitError: If retries exhausted
         """
-        last_exception = None
-        
         for attempt in range(self.max_retries + 1):
             try:
                 await self.wait_if_needed()
                 return await operation()
                 
             except Exception as e:
-                last_exception = e
                 error_str = str(e).lower()
                 
                 # Check if rate limit error
