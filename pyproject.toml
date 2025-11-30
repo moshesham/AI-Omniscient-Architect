@@ -60,7 +60,7 @@ analysis = [
 ]
 
 [project.scripts]
-omniscient-architect = "omniscient_architect.cli:main"
+omniscient-llm = "omniscient_llm.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/moshesham/AI-Omniscient-Architect"
@@ -69,11 +69,10 @@ Issues = "https://github.com/moshesham/AI-Omniscient-Architect/issues"
 Documentation = "https://github.com/moshesham/AI-Omniscient-Architect#readme"
 
 [tool.setuptools]
-packages = ["omniscient_architect"]
-package-dir = {"" = "src"}
+package-dir = {"" = "packages/core/src", "omniscient_llm" = "packages/llm/src/omniscient_llm"}
 
-[tool.setuptools.package-data]
-omniscient_architect = ["py.typed"]
+[tool.setuptools.packages.find]
+where = ["packages/*/src"]
 
 [tool.black]
 line-length = 120

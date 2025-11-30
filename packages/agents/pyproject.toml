@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omniscient-agents"
+version = "0.1.0"
+description = "AI analysis agents for Omniscient Architect"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "AI Omniscient Architect Team", email = "ai-team@example.com"},
+]
+keywords = ["code-analysis", "ai", "agents", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "omniscient-core>=0.1.0",
+    "langchain-core>=0.1.0",
+    "langchain-ollama>=0.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "mypy>=1.7.0",
+]
+openai = [
+    "langchain-openai>=0.1.0",
+]
+anthropic = [
+    "langchain-anthropic>=0.1.0",
+]
+llm = [
+    "omniscient-llm>=0.1.0",
+]
+all = [
+    "omniscient-agents[openai,anthropic,llm]",
+]
+
+[tool.setuptools]
+packages = ["omniscient_agents", "omniscient_agents.prompts"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+omniscient_agents = ["py.typed"]
