@@ -104,7 +104,7 @@ def _apply_yaml_config(cfg: AnalysisConfig, data: Dict[str, Any]) -> None:
             try:
                 setattr(cfg, attr, converter(data[yaml_key]))
             except Exception:
-                pass
+                pass  # Ignore invalid config values, use defaults
 
 
 def _apply_env_overrides(cfg: AnalysisConfig) -> None:
@@ -128,4 +128,4 @@ def _apply_env_overrides(cfg: AnalysisConfig) -> None:
             try:
                 setattr(cfg, attr, converter(value))
             except Exception:
-                pass
+                pass  # Ignore invalid env var values, use defaults

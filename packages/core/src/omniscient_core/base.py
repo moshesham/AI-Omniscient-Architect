@@ -1,16 +1,10 @@
 """Base classes for AI-powered analysis agents."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Callable, Any, TYPE_CHECKING
+from typing import List, Optional, Callable, Any
 from pydantic import BaseModel, Field
 
 from .models import FileAnalysis, RepositoryInfo
-
-# Type hints for optional langchain dependency
-if TYPE_CHECKING:
-    from langchain_core.language_models import BaseLanguageModel
-    from langchain_core.prompts import PromptTemplate
-    from langchain_core.output_parsers import PydanticOutputParser
 
 
 class AgentResponse(BaseModel):
@@ -169,7 +163,7 @@ class BaseAIAgent(ABC):
                             try:
                                 self.stream_callback(self.name, token)
                             except Exception:
-                                pass
+                                pass  # Ignore callback errors to avoid breaking streaming
                     response_text = "".join(chunks)
                 except Exception:
                     llm_response = await self.llm.ainvoke(prompt_text)

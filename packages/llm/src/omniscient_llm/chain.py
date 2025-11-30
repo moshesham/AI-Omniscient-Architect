@@ -76,7 +76,7 @@ class ProviderChain(BaseLLMProvider):
             try:
                 await provider.close()
             except Exception:
-                pass
+                pass  # Continue closing other providers even if one fails
         await super().close()
     
     async def _get_available_provider(self) -> BaseLLMProvider:

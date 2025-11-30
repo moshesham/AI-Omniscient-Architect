@@ -1,10 +1,9 @@
 """Semantic clustering for file grouping."""
 
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 try:
-    import numpy as np
     from sklearn.cluster import KMeans
     from sklearn.feature_extraction.text import TfidfVectorizer
     HAS_SKLEARN = True

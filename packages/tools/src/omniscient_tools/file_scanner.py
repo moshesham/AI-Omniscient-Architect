@@ -1,9 +1,8 @@
 """File scanner for repository analysis."""
 
 import fnmatch
-import os
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import List, Optional
 
 from omniscient_core import FileAnalysis
 
@@ -167,7 +166,7 @@ class FileScanner:
             try:
                 content = path.read_text(encoding="utf-8", errors="replace")
             except Exception:
-                pass
+                pass  # Silently skip files that cannot be read
         
         return FileAnalysis(
             path=str(path),

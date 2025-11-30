@@ -7,7 +7,7 @@ A professional Streamlit interface for analyzing codebases using local LLM model
 import asyncio
 import sys
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import List, Optional
 from datetime import datetime
 
 import streamlit as st
@@ -351,7 +351,7 @@ def find_code_files(directory: Path, max_files: int = 15) -> List[Path]:
                     if len(files) >= max_files:
                         break
     except PermissionError:
-        pass
+        pass  # Skip directories we cannot access
     
     return sorted(files, key=lambda x: x.suffix)
 
@@ -434,7 +434,7 @@ async def run_local_analysis(repo_path: Path):
                     )
                     file_analyses.append(fa)
                 except Exception:
-                    pass
+                    pass  # Skip files that cannot be read
                 
                 progress_bar.progress((i + 1) / len(code_files))
             
@@ -559,7 +559,7 @@ async def run_github_analysis(repo_url: str, token: Optional[str] = None):
                             )
                             file_analyses.append(fa)
                     except Exception:
-                        pass
+                        pass  # Skip files that cannot be fetched
                     progress.progress((i + 1) / len(code_files))
                 
                 progress.empty()

@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Set
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 
 from omniscient_core import (
     BaseAIAgent,

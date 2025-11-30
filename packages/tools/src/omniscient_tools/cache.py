@@ -195,7 +195,7 @@ class AnalysisCache:
                 cache_file.unlink()
                 count += 1
             except Exception:
-                pass
+                pass  # Ignore errors deleting individual cache files
         return count
     
     def get_stats(self) -> Dict[str, Any]:
