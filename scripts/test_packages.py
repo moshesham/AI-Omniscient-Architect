@@ -95,7 +95,7 @@ def test_tools_package():
     # Test complexity analyzer (may require lizard)
     try:
         from omniscient_tools import ComplexityAnalyzer
-        ComplexityAnalyzer()
+        _ = ComplexityAnalyzer()
         print("  ✓ ComplexityAnalyzer works (lizard installed)")
     except ImportError:
         print("  ⚠ ComplexityAnalyzer skipped (lizard not installed)")

@@ -1,5 +1,6 @@
 """LLM Client - Main interface for LLM operations."""
 
+import asyncio
 import time
 from typing import AsyncIterator, Optional, List
 
@@ -197,12 +198,11 @@ class LLMClient:
                         f"Generation failed, retrying in {delay}s "
                         f"(attempt {attempt + 1}/{retries + 1})"
                     )
-                    import asyncio
                     await asyncio.sleep(delay)
         
-        if last_error is not None:
-            raise last_error
-        raise LLMError("Generation failed after all retries")
+        # After all retries exhausted, last_error should be set
+        assert last_error is not None, "Loop should have caught at least one error"
+        raise last_error
     
     async def list_models(self) -> List[ModelInfo]:
         """List available models from the provider.
