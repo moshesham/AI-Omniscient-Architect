@@ -5,11 +5,12 @@ from datetime import datetime
 from typing import List, Optional
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class GitHubConfig(BaseModel):
     """Configuration for GitHub client."""
+    model_config = ConfigDict(extra="forbid")
     
     token: Optional[str] = Field(default=None, description="GitHub API token")
     api_url: str = Field(default="https://api.github.com", description="GitHub API URL")
@@ -17,9 +18,6 @@ class GitHubConfig(BaseModel):
     timeout: float = Field(default=30.0, description="Request timeout in seconds")
     max_retries: int = Field(default=3, description="Maximum retry attempts")
     backoff_factor: float = Field(default=2.0, description="Backoff factor for retries")
-    
-    class Config:
-        extra = "forbid"
 
 
 @dataclass

@@ -2,22 +2,20 @@
 
 from abc import ABC, abstractmethod
 from typing import List, Optional, Callable, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .models import FileAnalysis, RepositoryInfo
 
 
 class AgentResponse(BaseModel):
     """Structured response from an AI agent."""
+    model_config = ConfigDict(extra="allow")
+    
     agent_name: str = Field(default="", description="Name of the agent that produced the findings")
     findings: List[str] = Field(default_factory=list, description="List of key findings from the analysis")
     confidence: float = Field(default=0.0, description="Confidence score between 0 and 1", ge=0.0, le=1.0)
     reasoning: str = Field(default="", description="Detailed reasoning for the findings")
     recommendations: List[str] = Field(default_factory=list, description="Specific recommendations for improvement")
-    
-    class Config:
-        """Pydantic configuration."""
-        extra = "allow"
 
 
 class BaseAIAgent(ABC):

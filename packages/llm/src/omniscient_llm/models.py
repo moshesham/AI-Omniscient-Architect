@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, List, Dict, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProviderType(str, Enum):
@@ -104,6 +104,7 @@ class StreamChunk(BaseModel):
 
 class LLMConfig(BaseModel):
     """Configuration for LLM client."""
+    model_config = ConfigDict(extra="allow")  # Allow provider-specific options
     
     # Model settings
     model: str = Field(default="llama3.2:latest")
@@ -129,9 +130,6 @@ class LLMConfig(BaseModel):
     
     # Streaming
     stream_by_default: bool = False
-    
-    class Config:
-        extra = "allow"  # Allow provider-specific options
 
 
 class ModelInfo(BaseModel):

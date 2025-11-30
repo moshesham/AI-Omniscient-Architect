@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class CORSConfig(BaseModel):
@@ -74,10 +74,11 @@ class APIConfig(BaseSettings):
     analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     
-    class Config:
-        env_prefix = "OMNISCIENT_"
-        env_file = ".env"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_prefix="OMNISCIENT_",
+        env_file=".env",
+        extra="ignore",
+    )
     
     def get_llm_base_url(self) -> str:
         """Get LLM base URL."""

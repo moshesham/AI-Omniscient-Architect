@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 import uuid
 
 
@@ -55,6 +55,16 @@ class AnalysisConfig(BaseModel):
 
 class AnalysisRequest(BaseModel):
     """Request to analyze a repository."""
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "repository_url": "https://github.com/owner/repo",
+            "agents": ["architecture", "reliability"],
+            "config": {
+                "max_files": 100,
+                "include_patterns": ["*.py", "*.js"]
+            }
+        }
+    })
     
     repository_url: str = Field(..., description="GitHub repository URL")
     agents: Optional[List[str]] = Field(
@@ -69,18 +79,6 @@ class AnalysisRequest(BaseModel):
         default=None,
         description="Webhook URL for completion notification"
     )
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "repository_url": "https://github.com/owner/repo",
-                "agents": ["architecture", "reliability"],
-                "config": {
-                    "max_files": 100,
-                    "include_patterns": ["*.py", "*.js"]
-                }
-            }
-        }
 
 
 class FileUploadRequest(BaseModel):
@@ -94,6 +92,21 @@ class FileUploadRequest(BaseModel):
 
 class Finding(BaseModel):
     """A single finding from analysis."""
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "agent_name": "architecture",
+            "severity": "high",
+            "category": "architecture",
+            "title": "Circular Dependency Detected",
+            "description": "Module A imports Module B which imports Module A",
+            "file_path": "src/module_a.py",
+            "line_start": 5,
+            "suggestions": [
+                "Extract shared logic to a common module",
+                "Use dependency injection"
+            ]
+        }
+    })
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     agent_name: str = Field(..., description="Agent that produced this finding")
@@ -107,23 +120,6 @@ class Finding(BaseModel):
     code_snippet: Optional[str] = Field(default=None, description="Relevant code")
     suggestions: List[str] = Field(default_factory=list, description="Improvement suggestions")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional data")
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "agent_name": "architecture",
-                "severity": "high",
-                "category": "architecture",
-                "title": "Circular Dependency Detected",
-                "description": "Module A imports Module B which imports Module A",
-                "file_path": "src/module_a.py",
-                "line_start": 5,
-                "suggestions": [
-                    "Extract shared logic to a common module",
-                    "Use dependency injection"
-                ]
-            }
-        }
 
 
 class AgentSummary(BaseModel):
@@ -171,6 +167,20 @@ class AnalysisMetrics(BaseModel):
 
 class AnalysisResponse(BaseModel):
     """Response for analysis request."""
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
+            "status": "completed",
+            "repository_url": "https://github.com/owner/repo",
+            "created_at": "2024-01-15T10:30:00Z",
+            "completed_at": "2024-01-15T10:35:00Z",
+            "findings": [],
+            "summary": {
+                "total_findings": 15,
+                "overall_score": 78.5
+            }
+        }
+    })
     
     analysis_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     status: AnalysisStatus = AnalysisStatus.PENDING
@@ -183,22 +193,6 @@ class AnalysisResponse(BaseModel):
     summary: Optional[AnalysisSummary] = None
     metrics: Optional[AnalysisMetrics] = None
     error: Optional[str] = None
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "analysis_id": "550e8400-e29b-41d4-a716-446655440000",
-                "status": "completed",
-                "repository_url": "https://github.com/owner/repo",
-                "created_at": "2024-01-15T10:30:00Z",
-                "completed_at": "2024-01-15T10:35:00Z",
-                "findings": [],
-                "summary": {
-                    "total_findings": 15,
-                    "overall_score": 78.5
-                }
-            }
-        }
 
 
 class AgentInfo(BaseModel):
