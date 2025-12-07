@@ -3,17 +3,24 @@
 import sys
 import os
 from pathlib import Path
-
-# Add package paths
-_r = Path(__file__).parent.parent
-for _p in ["core", "llm", "agents", "tools", "github", "api"]:
-    _path = _r / "packages" / _p / "src"
-    if _path.exists(): sys.path.insert(0, str(_path))
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 # Set minimal config for serverless environment
 os.environ.setdefault("OMNISCIENT_DEBUG", "false")
 os.environ.setdefault("OMNISCIENT_API_HOST", "0.0.0.0")
 os.environ.setdefault("OMNISCIENT_API_PORT", "8000")
+
+# Add package paths
+_r = Path(__file__).parent.parent
+for _p in ["core", "llm", "agents", "tools", "github", "api"]:
+    _path = _r / "packages" / _p / "src"
+    if _path.exists(): 
+        sys.path.insert(0, str(_path))
+
+# Initialize app variable
+app = None
+initialization_error = None
 
 try:
     # Import and create the FastAPI app
@@ -22,22 +29,46 @@ try:
     # Create the app instance for Vercel
     app = create_app()
     
-    # This is the handler that Vercel will call
-    handler = app
-    
 except Exception as e:
-    # Fallback minimal app if packages fail to load
-    from fastapi import FastAPI
+    # Store error for debugging
+    initialization_error = str(e)
+    import traceback
+    error_traceback = traceback.format_exc()
     
-    app = FastAPI()
+    # Create fallback minimal app if packages fail to load
+    app = FastAPI(
+        title="Omniscient Architect API",
+        description="AI-powered code architecture analysis (Initialization Error)",
+        version="0.2.0"
+    )
     
     @app.get("/")
-    def read_root():
+    async def read_root():
         return {
+            "name": "Omniscient Architect API",
+            "status": "degraded",
             "error": "API initialization failed",
-            "detail": str(e),
-            "message": "Please check package installation"
+            "detail": initialization_error,
+            "traceback": error_traceback,
+            "message": "Please check logs and package installation",
+            "docs": "/docs",
+            "health": "/health"
         }
     
-    handler = app
+    @app.get("/health")
+    async def health():
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "error": initialization_error,
+                "checks": {
+                    "api": False,
+                    "packages": False
+                }
+            }
+        )
+
+# This is the handler that Vercel will call
+handler = app
 
