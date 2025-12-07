@@ -141,6 +141,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [prepare, build]
     if: needs.prepare.outputs.dry_run == 'false'
+    environment: testpypi
+    permissions:
+      id-token: write
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -164,6 +167,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [prepare, build, publish-testpypi]
     if: needs.prepare.outputs.dry_run == 'false'
+    environment: pypi
+    permissions:
+      id-token: write
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
