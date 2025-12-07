@@ -133,56 +133,6 @@ jobs:
           name: dist
           path: ${{ needs.prepare.outputs.package_path }}/dist/
 
-  # ============================================================================
-  # Publish to TestPyPI (for validation)
-  # ============================================================================
-  publish-testpypi:
-    name: Publish to TestPyPI
-    runs-on: ubuntu-latest
-    needs: [prepare, build]
-    if: needs.prepare.outputs.dry_run == 'false'
-    environment: testpypi
-    permissions:
-      id-token: write
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          skip-existing: true
-          password: ${{ secrets.TESTPYPI_API_TOKEN }}
-          # Uses OIDC trusted publishing if TESTPYPI_API_TOKEN is not set
-
-  # ============================================================================
-  # Publish to PyPI (production)
-  # ============================================================================
-  publish-pypi:
-    name: Publish to PyPI
-    runs-on: ubuntu-latest
-    needs: [prepare, build, publish-testpypi]
-    if: needs.prepare.outputs.dry_run == 'false'
-    environment: pypi
-    permissions:
-      id-token: write
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          skip-existing: true
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          # Uses OIDC trusted publishing if PYPI_API_TOKEN is not set
 
   # ============================================================================
   # Create GitHub Release
