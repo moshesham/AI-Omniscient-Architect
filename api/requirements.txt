@@ -1,0 +1,23 @@
+# Vercel serverless requirements
+# This is a minimal set for API deployment without heavy dependencies
+
+# Core dependencies
+httpx>=0.25.0
+pydantic>=2.5.0
+pydantic-settings>=2.0.0
+pyyaml>=6.0
+structlog>=23.2.0
+rich>=13.7.0
+
+# Web framework
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# GitHub integration
+PyGitHub>=2.1.0
+
+# Utilities
+python-dotenv>=1.0.0
+
+# Note: RAG/database dependencies excluded for serverless deployment
+# For full functionality, deploy on a server with persistent storage
