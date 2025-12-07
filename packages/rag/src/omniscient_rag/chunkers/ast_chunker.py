@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from .base import BaseChunker
 from ..models import Document, Chunk
+from omniscient_core import get_language_for_ast
 
 # Try to import tree-sitter for proper AST parsing
 try:
@@ -56,18 +57,6 @@ class ASTChunker(BaseChunker):
         re.MULTILINE
     )
     
-    # Language detection by extension
-    LANGUAGE_MAP = {
-        'py': 'python',
-        'pyw': 'python',
-        'js': 'javascript',
-        'jsx': 'javascript',
-        'ts': 'typescript',
-        'tsx': 'typescript',
-        'mjs': 'javascript',
-        'cjs': 'javascript',
-    }
-    
     def __init__(
         self,
         chunk_size: int = 512,
@@ -111,8 +100,9 @@ class ASTChunker(BaseChunker):
         """Detect programming language from document."""
         ext = document.file_extension
         if ext:
-            return self.LANGUAGE_MAP.get(ext, 'unknown')
-        return document.metadata.get('language', 'unknown')
+            return get_language_for_ast(f"file.{ext}")
+        lang = document.metadata.get('language')
+        return lang.lower() if lang else 'unknown'
     
     def chunk(self, document: Document) -> List[Chunk]:
         """Split code document by AST structure.

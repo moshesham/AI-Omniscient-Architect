@@ -6,10 +6,15 @@ from .models import (
     ReviewResult,
     RepositoryInfo,
     AnalysisConfig,
-    AnalysisStatus,
     AgentConfig,
     AnalysisJob,
 )
+from .enums import (
+    AnalysisStatus,
+    Severity,
+    FindingCategory,
+)
+from .language_utils import detect_language, get_language_for_ast, LANGUAGE_EXTENSIONS
 from .config import load_config, get_config_path
 from .logging import setup_logging, get_logger
 from .base import BaseAIAgent, AgentResponse
@@ -23,9 +28,16 @@ __all__ = [
     "ReviewResult",
     "RepositoryInfo",
     "AnalysisConfig",
-    "AnalysisStatus",
     "AgentConfig",
     "AnalysisJob",
+    # Enums
+    "AnalysisStatus",
+    "Severity",
+    "FindingCategory",
+    # Language utils
+    "detect_language",
+    "get_language_for_ast",
+    "LANGUAGE_EXTENSIONS",
     # Config
     "load_config",
     "get_config_path",
