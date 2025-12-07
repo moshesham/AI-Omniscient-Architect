@@ -17,11 +17,11 @@ from enum import Enum
 from typing import List, Optional, Dict, Any, Tuple
 from uuid import UUID, uuid4
 
-try:
+from omniscient_core import optional_import
+
+HAS_POSTGRES, _ = optional_import("psycopg")
+if HAS_POSTGRES:
     from psycopg.rows import dict_row
-    HAS_POSTGRES = True
-except ImportError:
-    HAS_POSTGRES = False
 
 
 class FeedbackType(Enum):

@@ -6,7 +6,7 @@ from typing import List, Optional, Set
 from pathlib import Path
 
 from omniscient_core.logging import get_logger
-from omniscient_core import FileAnalysis, detect_language
+from omniscient_core import FileAnalysis, detect_language, AsyncContextMixin
 from .client import GitHubClient
 from .models import GitHubRepo, ScanResult, GitHubConfig
 
@@ -50,7 +50,7 @@ DEFAULT_EXCLUDE_PATTERNS = {
 }
 
 
-class RepositoryScanner:
+class RepositoryScanner(AsyncContextMixin):
     """Scans GitHub repositories to discover and filter files.
     
     Provides pattern-based filtering, size limits, and language detection
@@ -78,6 +78,8 @@ class RepositoryScanner:
             config: GitHub configuration
             client: Existing GitHubClient instance
         """
+        # Call parent __init__ if needed
+        super().__init__()
         self._token = token
         self._config = config
         self._client = client
@@ -99,12 +101,9 @@ class RepositoryScanner:
             await self._client.close()
             self._client = None
     
-    async def __aenter__(self) -> "RepositoryScanner":
+    async def initialize(self) -> None:
+        """Initialize the client connection."""
         await self._get_client()
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.close()
     
     def _matches_pattern(self, path: str, patterns: Set[str]) -> bool:
         """Check if path matches any pattern.

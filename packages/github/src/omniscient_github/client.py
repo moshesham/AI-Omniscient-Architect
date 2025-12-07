@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Any
 import httpx
 
 from omniscient_core.logging import get_logger
+from omniscient_core import AsyncContextMixin
 from .models import (
     GitHubConfig,
     GitHubRepo,
@@ -19,7 +20,7 @@ from .utils import parse_github_url, normalize_path
 logger = get_logger(__name__)
 
 
-class GitHubClient:
+class GitHubClient(AsyncContextMixin):
     """Async client for GitHub API operations.
     
     Provides high-level methods for interacting with GitHub repositories,
@@ -74,14 +75,9 @@ class GitHubClient:
             )
         return self._client
     
-    async def __aenter__(self) -> "GitHubClient":
-        """Enter async context."""
+    async def initialize(self) -> None:
+        """Initialize the HTTP client."""
         await self._get_client()
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Exit async context."""
-        await self.close()
     
     async def close(self) -> None:
         """Close the HTTP client."""

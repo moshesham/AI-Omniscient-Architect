@@ -5,9 +5,10 @@ import sys
 from pathlib import Path
 
 # Add packages to path
-pkg_root = Path(__file__).parent
-sys.path.insert(0, str(pkg_root / "src"))
-sys.path.insert(0, str(pkg_root.parent / "core" / "src"))
+_r = Path(__file__).parent
+for _p in ["llm", "core"]:
+    _path = _r.parent / _p / "src"
+    if _path.exists(): sys.path.insert(0, str(_path))
 
 
 def test_imports():

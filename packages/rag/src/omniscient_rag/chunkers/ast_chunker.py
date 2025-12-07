@@ -6,16 +6,19 @@ from uuid import uuid4
 
 from .base import BaseChunker
 from ..models import Document, Chunk
-from omniscient_core import get_language_for_ast
+from omniscient_core import get_language_for_ast, optional_import
 
 # Try to import tree-sitter for proper AST parsing
-try:
+HAS_TREE_SITTER, _ = optional_import("tree_sitter")
+HAS_TS_PYTHON, _ = optional_import("tree_sitter_python")
+HAS_TS_JAVASCRIPT, _ = optional_import("tree_sitter_javascript")
+
+if HAS_TREE_SITTER:
     import tree_sitter
-    import tree_sitter_python
-    import tree_sitter_javascript
-    HAS_TREE_SITTER = True
-except ImportError:
-    HAS_TREE_SITTER = False
+    if HAS_TS_PYTHON:
+        import tree_sitter_python
+    if HAS_TS_JAVASCRIPT:
+        import tree_sitter_javascript
 
 
 class ASTChunker(BaseChunker):

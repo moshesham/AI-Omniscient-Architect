@@ -6,11 +6,10 @@ import sys
 from pathlib import Path
 
 # Add package paths
-packages_dir = Path(__file__).parent / "packages"
-for pkg in ["core", "agents", "tools", "github", "api", "llm"]:
-    src_path = packages_dir / pkg / "src"
-    if src_path.exists():
-        sys.path.insert(0, str(src_path))
+_r = Path(__file__).parent.parent
+for _p in ["core", "agents", "tools", "github", "api", "llm"]:
+    _path = _r / "packages" / _p / "src"
+    if _path.exists(): sys.path.insert(0, str(_path))
 
 from omniscient_core import EXCLUDE_DIRS
 

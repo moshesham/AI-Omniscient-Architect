@@ -3,14 +3,12 @@
 from pathlib import Path
 from typing import List, Dict, Any
 
-try:
+from omniscient_core import FileAnalysis, optional_import
+
+HAS_SKLEARN, _ = optional_import("sklearn")
+if HAS_SKLEARN:
     from sklearn.cluster import KMeans
     from sklearn.feature_extraction.text import TfidfVectorizer
-    HAS_SKLEARN = True
-except ImportError:
-    HAS_SKLEARN = False
-
-from omniscient_core import FileAnalysis
 
 
 class SemanticClusterer:

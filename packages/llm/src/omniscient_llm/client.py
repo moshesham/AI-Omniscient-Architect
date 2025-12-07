@@ -5,6 +5,7 @@ import time
 from typing import AsyncIterator, Optional, List
 
 from omniscient_core.logging import get_logger
+from omniscient_core import AsyncContextMixin
 
 from .base import BaseLLMProvider
 from .models import (
@@ -19,7 +20,7 @@ from .errors import ProviderUnavailable, LLMError
 logger = get_logger(__name__)
 
 
-class LLMClient:
+class LLMClient(AsyncContextMixin):
     """High-level client for LLM operations.
     
     Provides a unified interface for text generation with support for
@@ -58,15 +59,6 @@ class LLMClient:
         if self.provider:
             await self.provider.close()
         self._initialized = False
-    
-    async def __aenter__(self) -> "LLMClient":
-        """Async context manager entry."""
-        await self.initialize()
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Async context manager exit."""
-        await self.close()
     
     async def generate(
         self,

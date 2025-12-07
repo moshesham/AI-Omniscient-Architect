@@ -5,12 +5,11 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add package paths (packages/ is sibling to scripts/)
-packages_dir = Path(__file__).parent.parent / "packages"
-for pkg in ["core", "agents", "tools", "github", "api", "llm", "rag"]:
-    src_path = packages_dir / pkg / "src"
-    if src_path.exists():
-        sys.path.insert(0, str(src_path))
+# Add package paths
+_r = Path(__file__).parent.parent
+for _p in ["core", "agents", "tools", "github", "api", "llm", "rag"]:
+    _path = _r / "packages" / _p / "src"
+    if _path.exists(): sys.path.insert(0, str(_path))
 
 
 # Sample code files for testing (simulating Economic-Dashboard-API structure)

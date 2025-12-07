@@ -4,6 +4,7 @@ import time
 from typing import AsyncIterator, List, Optional
 
 from omniscient_core.logging import get_logger
+from omniscient_core import optional_import
 
 from ..base import BaseLLMProvider
 from ..models import (
@@ -24,11 +25,10 @@ from ..errors import (
 logger = get_logger(__name__)
 
 # Check if openai is available
-try:
+HAS_OPENAI, _ = optional_import("openai")
+if HAS_OPENAI:
     from openai import AsyncOpenAI
-    HAS_OPENAI = True
-except ImportError:
-    HAS_OPENAI = False
+else:
     AsyncOpenAI = None  # type: ignore
 
 

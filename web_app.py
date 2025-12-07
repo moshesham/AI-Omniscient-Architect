@@ -12,12 +12,11 @@ from datetime import datetime
 
 import streamlit as st
 
-# Add package paths for development
-packages_dir = Path(__file__).parent / "packages"
-for pkg in ["core", "agents", "tools", "github", "api", "llm", "rag"]:
-    src_path = packages_dir / pkg / "src"
-    if src_path.exists():
-        sys.path.insert(0, str(src_path))
+# Add package paths
+_r = Path(__file__).parent
+for _p in ["core", "agents", "tools", "github", "api", "llm", "rag"]:
+    _path = _r / "packages" / _p / "src"
+    if _path.exists(): sys.path.insert(0, str(_path))
 
 # Import from modular packages
 from omniscient_core import FileAnalysis, RepositoryInfo, CODE_EXTENSIONS, EXCLUDE_DIRS

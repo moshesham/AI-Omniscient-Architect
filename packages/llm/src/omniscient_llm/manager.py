@@ -4,6 +4,7 @@ from typing import Callable, Optional, AsyncIterator
 from dataclasses import dataclass
 
 from omniscient_core.logging import get_logger
+from omniscient_core import AsyncContextMixin
 
 from .providers.ollama import OllamaProvider
 from .models import ModelInfo
@@ -39,7 +40,7 @@ class PullProgress:
         return self.completed / (1024 * 1024)
 
 
-class ModelManager:
+class ModelManager(AsyncContextMixin):
     """Manage local LLM models via Ollama.
     
     Provides functionality for:
@@ -120,15 +121,6 @@ class ModelManager:
         """Close connection."""
         if self._provider:
             await self._provider.close()
-    
-    async def __aenter__(self) -> "ModelManager":
-        """Async context manager entry."""
-        await self.initialize()
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Async context manager exit."""
-        await self.close()
     
     async def is_available(self) -> bool:
         """Check if Ollama is available.
