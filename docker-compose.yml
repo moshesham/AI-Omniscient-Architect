@@ -48,6 +48,8 @@ services:
         condition: service_healthy
       ollama:
         condition: service_started
+    working_dir: /app
+    command: streamlit run web_app.py
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8501/_stcore/health || exit 1"]
