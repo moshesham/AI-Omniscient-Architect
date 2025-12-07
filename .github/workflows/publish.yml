@@ -156,8 +156,8 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
           skip-existing: true
-          # Falls back to API token if trusted publishing is not configured
-          # Add TESTPYPI_API_TOKEN secret in repository settings if needed
+          password: ${{ secrets.TESTPYPI_API_TOKEN }}
+          # Uses OIDC trusted publishing if TESTPYPI_API_TOKEN is not set
 
   # ============================================================================
   # Publish to PyPI (production)
@@ -181,6 +181,8 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: true
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          # Uses OIDC trusted publishing if PYPI_API_TOKEN is not set
 
   # ============================================================================
   # Create GitHub Release
