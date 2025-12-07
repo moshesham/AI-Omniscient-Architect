@@ -19,8 +19,9 @@ for _p in ["core", "llm", "agents", "tools", "github", "api"]:
     if _path.exists(): 
         sys.path.insert(0, str(_path))
 
-# Initialize app variable
-app = None
+# Initialize variables
+# We use _app to avoid Vercel's native detection which can be flaky
+_app = None
 handler = None
 initialization_error = None
 
@@ -28,9 +29,8 @@ try:
     # Import and create the FastAPI app
     from omniscient_api.app import create_app
     
-    # Create the app instance for Vercel
-    app = create_app()
-    handler = Mangum(app)
+    # Create the app instance
+    _app = create_app()
     
 except Exception as e:
     # Store error for debugging
@@ -38,14 +38,14 @@ except Exception as e:
     import traceback
     error_traceback = traceback.format_exc()
     
-    # Create fallback minimal app if packages fail to load
-    app = FastAPI(
+    # Create fallback minimal app
+    _app = FastAPI(
         title="Omniscient Architect API",
         description="AI-powered code architecture analysis (Initialization Error)",
         version="0.2.0"
     )
     
-    @app.get("/")
+    @_app.get("/")
     async def read_root():
         return {
             "name": "Omniscient Architect API",
@@ -55,15 +55,7 @@ except Exception as e:
             "traceback": error_traceback.split("\n")
         }
     
-    handler = Mangum(app)
-            "detail": initialization_error,
-            "traceback": error_traceback,
-            "message": "Please check logs and package installation",
-            "docs": "/docs",
-            "health": "/health"
-        }
-    
-    @app.get("/health")
+    @_app.get("/health")
     async def health():
         return JSONResponse(
             status_code=503,
@@ -77,6 +69,6 @@ except Exception as e:
             }
         )
 
-# This is the handler that Vercel will call
-handler = app
+# Create the handler for Vercel (using Mangum adapter)
+handler = Mangum(_app)
 
