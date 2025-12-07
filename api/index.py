@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from mangum import Mangum
 
 # Set minimal config for serverless environment
 os.environ.setdefault("OMNISCIENT_DEBUG", "false")
@@ -20,6 +21,7 @@ for _p in ["core", "llm", "agents", "tools", "github", "api"]:
 
 # Initialize app variable
 app = None
+handler = None
 initialization_error = None
 
 try:
@@ -28,6 +30,7 @@ try:
     
     # Create the app instance for Vercel
     app = create_app()
+    handler = Mangum(app)
     
 except Exception as e:
     # Store error for debugging
@@ -48,6 +51,11 @@ except Exception as e:
             "name": "Omniscient Architect API",
             "status": "degraded",
             "error": "API initialization failed",
+            "details": initialization_error,
+            "traceback": error_traceback.split("\n")
+        }
+    
+    handler = Mangum(app)
             "detail": initialization_error,
             "traceback": error_traceback,
             "message": "Please check logs and package installation",

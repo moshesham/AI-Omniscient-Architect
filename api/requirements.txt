@@ -13,6 +13,7 @@ rich>=13.7.0
 fastapi>=0.104.0
 uvicorn>=0.24.0
 python-multipart>=0.0.6
+mangum>=0.17.0
 
 # GitHub integration
 PyGitHub>=2.1.0
