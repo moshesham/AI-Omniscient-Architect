@@ -5,13 +5,10 @@ import os
 from pathlib import Path
 
 # Add package paths
-project_root = Path(__file__).parent.parent
-packages_dir = project_root / "packages"
-
-for pkg in ["core", "llm", "agents", "tools", "github", "api"]:
-    src_path = packages_dir / pkg / "src"
-    if src_path.exists():
-        sys.path.insert(0, str(src_path))
+_r = Path(__file__).parent.parent
+for _p in ["core", "llm", "agents", "tools", "github", "api"]:
+    _path = _r / "packages" / _p / "src"
+    if _path.exists(): sys.path.insert(0, str(_path))
 
 # Set minimal config for serverless environment
 os.environ.setdefault("OMNISCIENT_DEBUG", "false")

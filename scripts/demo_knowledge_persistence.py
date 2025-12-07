@@ -21,11 +21,10 @@ from pathlib import Path
 from datetime import datetime
 
 # Add package paths
-project_root = Path(__file__).parent.parent
-for pkg in ["core", "llm", "rag"]:
-    src_path = project_root / "packages" / pkg / "src"
-    if src_path.exists():
-        sys.path.insert(0, str(src_path))
+_r = Path(__file__).parent.parent
+for _p in ["core", "llm", "rag"]:
+    _path = _r / "packages" / _p / "src"
+    if _path.exists(): sys.path.insert(0, str(_path))
 
 
 async def main():
