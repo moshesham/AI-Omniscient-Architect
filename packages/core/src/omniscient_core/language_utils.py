@@ -63,3 +63,16 @@ def get_language_for_ast(file_path: str | Path) -> str:
     """
     lang = detect_language(file_path)
     return lang.lower() if lang != "Unknown" else "unknown"
+
+
+# Common code file extensions (set for quick lookups)
+CODE_EXTENSIONS = {
+    '.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.go', '.rs', '.rb',
+    '.cpp', '.c', '.h', '.cs', '.php', '.swift', '.kt', '.scala'
+}
+
+# Common directories to exclude from scanning
+EXCLUDE_DIRS = {
+    '.venv', 'venv', '__pycache__', '.git', 'node_modules',
+    'dist', 'build', '.next', 'target', 'out', '.cache'
+}

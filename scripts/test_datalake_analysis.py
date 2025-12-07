@@ -12,6 +12,8 @@ for pkg in ["core", "agents", "tools", "github", "api", "llm"]:
     if src_path.exists():
         sys.path.insert(0, str(src_path))
 
+from omniscient_core import EXCLUDE_DIRS
+
 
 # Path to the local repository
 REPO_PATH = Path(r"C:\Users\Moshe\Analytical_Guide\Datalake-Guide")
@@ -20,11 +22,10 @@ REPO_PATH = Path(r"C:\Users\Moshe\Analytical_Guide\Datalake-Guide")
 def find_python_files(repo_path: Path, max_files: int = 15) -> list[Path]:
     """Find Python files in the repository, excluding venv and cache."""
     files = []
-    exclude_dirs = {'.venv', 'venv', '__pycache__', '.git', 'node_modules'}
     
     for py_file in repo_path.rglob("*.py"):
         # Skip excluded directories
-        if any(excluded in py_file.parts for excluded in exclude_dirs):
+        if any(excluded in py_file.parts for excluded in EXCLUDE_DIRS):
             continue
         files.append(py_file)
         if len(files) >= max_files:

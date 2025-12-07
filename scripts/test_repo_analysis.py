@@ -6,11 +6,13 @@ import sys
 from pathlib import Path
 
 # Add package paths
-packages_dir = Path(__file__).parent / "packages"
+packages_dir = Path(__file__).parent.parent / "packages"
 for pkg in ["core", "agents", "tools", "github", "api", "llm"]:
     src_path = packages_dir / pkg / "src"
     if src_path.exists():
         sys.path.insert(0, str(src_path))
+
+from omniscient_core import CODE_EXTENSIONS
 
 
 async def test_github_analysis():
@@ -64,8 +66,7 @@ async def test_github_analysis():
             files = await client.list_files_recursive(owner, repo_name)
             
             # Filter for code files
-            code_extensions = {'.py', '.js', '.ts', '.java', '.go', '.rs', '.rb', '.php'}
-            code_files = [f for f in files if f.type == 'file' and any(f.path.endswith(ext) for ext in code_extensions)]
+            code_files = [f for f in files if f.type == 'file' and any(f.path.endswith(ext) for ext in CODE_EXTENSIONS)]
             print(f"✓ Found {len(code_files)} code files")
             
             # Fetch file contents (limit to first 10 for testing)

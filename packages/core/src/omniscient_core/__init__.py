@@ -14,7 +14,7 @@ from .enums import (
     Severity,
     FindingCategory,
 )
-from .language_utils import detect_language, get_language_for_ast, LANGUAGE_EXTENSIONS
+from .language_utils import detect_language, get_language_for_ast, LANGUAGE_EXTENSIONS, CODE_EXTENSIONS, EXCLUDE_DIRS
 from .config import load_config, get_config_path
 from .logging import setup_logging, get_logger
 from .base import BaseAIAgent, AgentResponse
@@ -38,6 +38,8 @@ __all__ = [
     "detect_language",
     "get_language_for_ast",
     "LANGUAGE_EXTENSIONS",
+    "CODE_EXTENSIONS",
+    "EXCLUDE_DIRS",
     # Config
     "load_config",
     "get_config_path",
