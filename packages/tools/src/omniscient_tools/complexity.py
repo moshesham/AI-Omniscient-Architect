@@ -4,11 +4,11 @@ import os
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
-try:
+from omniscient_core import optional_import
+
+HAS_LIZARD, _ = optional_import("lizard")
+if HAS_LIZARD:
     import lizard
-    HAS_LIZARD = True
-except ImportError:
-    HAS_LIZARD = False
 
 
 class ComplexityAnalyzer:

@@ -6,14 +6,14 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple, Union
 from uuid import UUID
 
-try:
+from omniscient_core import optional_import
+
+HAS_POSTGRES, _ = optional_import("psycopg")
+if HAS_POSTGRES:
     import psycopg
     from psycopg.rows import dict_row
     from psycopg_pool import AsyncConnectionPool
     from pgvector.psycopg import register_vector_async
-    HAS_POSTGRES = True
-except ImportError:
-    HAS_POSTGRES = False
 
 from ..models import Document, Chunk, KnowledgeQuestion, KnowledgeScore
 

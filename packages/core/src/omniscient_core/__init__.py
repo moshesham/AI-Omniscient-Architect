@@ -19,6 +19,7 @@ from .config import load_config, get_config_path
 from .logging import setup_logging, get_logger
 from .base import BaseAIAgent, AgentResponse
 from .mixins import AsyncContextMixin
+from .optional_imports import optional_import, require_optional
 
 __version__ = "0.1.0"
 
@@ -52,4 +53,7 @@ __all__ = [
     "AgentResponse",
     # Mixins
     "AsyncContextMixin",
+    # Optional imports
+    "optional_import",
+    "require_optional",
 ]

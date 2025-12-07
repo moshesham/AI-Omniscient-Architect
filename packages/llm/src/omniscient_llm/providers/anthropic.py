@@ -4,6 +4,7 @@ import time
 from typing import AsyncIterator, List, Optional
 
 from omniscient_core.logging import get_logger
+from omniscient_core import optional_import
 
 from ..base import BaseLLMProvider
 from ..models import (
@@ -24,11 +25,10 @@ from ..errors import (
 logger = get_logger(__name__)
 
 # Check if anthropic is available
-try:
+HAS_ANTHROPIC, _ = optional_import("anthropic")
+if HAS_ANTHROPIC:
     from anthropic import AsyncAnthropic
-    HAS_ANTHROPIC = True
-except ImportError:
-    HAS_ANTHROPIC = False
+else:
     AsyncAnthropic = None  # type: ignore
 
 
