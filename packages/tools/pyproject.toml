@@ -7,7 +7,7 @@ name = "omniscient-tools"
 version = "0.1.0"
 description = "Analysis tools for Omniscient Architect"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.9"
 authors = [
     {name = "AI Omniscient Architect Team", email = "ai-team@example.com"},
@@ -16,7 +16,6 @@ keywords = ["code-analysis", "complexity", "clustering", "tools"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
 ]
 dependencies = [

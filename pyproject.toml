@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "omniscient-architect"
 version = "0.2.0"
 description = "AI-powered code review and development assistant"
-readme = "OMNISCIENT_ARCHITECT_README.md"
-license = {text = "MIT"}
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.9"
 authors = [
     {name = "Data Science Analytical Handbook Team", email = "team@example.com"},
@@ -19,7 +19,6 @@ keywords = ["code-review", "ai", "development", "analysis", "github"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
@@ -29,20 +28,14 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Software Development :: Testing",
 ]
+# Meta-package: dependencies on sub-packages
 dependencies = [
-    "langchain>=0.1.0",
-    "langchain-community>=0.0.10",
-    "langchain-core>=0.1.0",
-    "ollama>=0.2.0",
-    "streamlit>=1.28.0",
-    "fastapi>=0.104.0",
-    "uvicorn>=0.24.0",
-    "pydantic>=2.5.0",
-    "python-dotenv>=1.0.0",
-    "PyGitHub>=2.1.0",
-    "tree-sitter>=0.20.0",
-    "structlog>=23.2.0",
-    "rich>=13.7.0",
+    "omniscient-core>=0.1.0",
+    "omniscient-llm>=0.1.0",
+    "omniscient-agents>=0.1.0",
+    "omniscient-tools>=0.1.0",
+    "omniscient-github>=0.1.0",
+    "omniscient-api>=0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -54,13 +47,12 @@ dev = [
     "mypy>=1.7.0",
     "pre-commit>=3.5.0",
 ]
-analysis = [
-    "numpy>=1.24.0",
-    "pandas>=2.1.0",
+rag = [
+    "omniscient-rag>=0.1.0",
 ]
-
-[project.scripts]
-omniscient-llm = "omniscient_llm.cli:main"
+full = [
+    "omniscient-rag>=0.1.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/moshesham/AI-Omniscient-Architect"
@@ -68,11 +60,9 @@ Repository = "https://github.com/moshesham/AI-Omniscient-Architect"
 Issues = "https://github.com/moshesham/AI-Omniscient-Architect/issues"
 Documentation = "https://github.com/moshesham/AI-Omniscient-Architect#readme"
 
+# Meta-package has no source code, just dependencies
 [tool.setuptools]
-package-dir = {"" = "packages/core/src", "omniscient_llm" = "packages/llm/src/omniscient_llm"}
-
-[tool.setuptools.packages.find]
-where = ["packages/*/src"]
+packages = []
 
 [tool.black]
 line-length = 120
