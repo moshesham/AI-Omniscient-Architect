@@ -4,17 +4,9 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 from datetime import datetime
-from enum import Enum
 import os
 
-
-class AnalysisStatus(str, Enum):
-    """Status of an analysis job."""
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+from .enums import AnalysisStatus
 
 
 @dataclass

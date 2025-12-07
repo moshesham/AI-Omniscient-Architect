@@ -6,7 +6,7 @@ from typing import List, Optional, Set
 from pathlib import Path
 
 from omniscient_core.logging import get_logger
-from omniscient_core import FileAnalysis
+from omniscient_core import FileAnalysis, detect_language
 from .client import GitHubClient
 from .models import GitHubRepo, ScanResult, GitHubConfig
 
@@ -47,43 +47,6 @@ DEFAULT_EXCLUDE_PATTERNS = {
     # Generated
     "**/*.generated.*",
     "**/auto-generated/**",
-}
-
-# Language extensions mapping
-LANGUAGE_EXTENSIONS = {
-    "py": "Python",
-    "js": "JavaScript",
-    "ts": "TypeScript",
-    "jsx": "JavaScript",
-    "tsx": "TypeScript",
-    "java": "Java",
-    "kt": "Kotlin",
-    "go": "Go",
-    "rs": "Rust",
-    "rb": "Ruby",
-    "php": "PHP",
-    "cs": "C#",
-    "cpp": "C++",
-    "c": "C",
-    "h": "C",
-    "hpp": "C++",
-    "swift": "Swift",
-    "scala": "Scala",
-    "r": "R",
-    "sql": "SQL",
-    "sh": "Shell",
-    "bash": "Shell",
-    "ps1": "PowerShell",
-    "yaml": "YAML",
-    "yml": "YAML",
-    "json": "JSON",
-    "xml": "XML",
-    "html": "HTML",
-    "css": "CSS",
-    "scss": "SCSS",
-    "less": "Less",
-    "md": "Markdown",
-    "rst": "reStructuredText",
 }
 
 
@@ -170,8 +133,7 @@ class RepositoryScanner:
         Returns:
             Language name or "Unknown"
         """
-        ext = Path(path).suffix.lstrip(".").lower()
-        return LANGUAGE_EXTENSIONS.get(ext, "Unknown")
+        return detect_language(path)
     
     async def scan_repository(
         self,

@@ -3,7 +3,6 @@
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 
 from omniscient_core import (
@@ -11,20 +10,11 @@ from omniscient_core import (
     AgentResponse,
     FileAnalysis,
     RepositoryInfo,
+    AnalysisStatus,
 )
 from omniscient_core.logging import get_logger
 
 logger = get_logger(__name__)
-
-
-class AnalysisStatus(str, Enum):
-    """Status of an analysis task."""
-    
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
 
 
 @dataclass

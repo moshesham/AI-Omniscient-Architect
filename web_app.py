@@ -20,7 +20,7 @@ for pkg in ["core", "agents", "tools", "github", "api", "llm", "rag"]:
         sys.path.insert(0, str(src_path))
 
 # Import from modular packages
-from omniscient_core import FileAnalysis, RepositoryInfo
+from omniscient_core import FileAnalysis, RepositoryInfo, CODE_EXTENSIONS, EXCLUDE_DIRS
 from omniscient_llm import OllamaProvider, LLMClient, ModelManager
 from omniscient_agents.llm_agent import CodeReviewAgent
 
@@ -355,14 +355,11 @@ def render_sidebar():
 
 def find_code_files(directory: Path, max_files: int = 15) -> List[Path]:
     """Find code files in a directory."""
-    code_extensions = {'.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.go', '.rs', '.rb', '.cpp', '.c', '.h', '.cs'}
-    exclude_dirs = {'.venv', 'venv', '__pycache__', '.git', 'node_modules', 'dist', 'build', '.next', 'target'}
-    
     files = []
     try:
         for file_path in directory.rglob("*"):
-            if file_path.is_file() and file_path.suffix in code_extensions:
-                if not any(excluded in file_path.parts for excluded in exclude_dirs):
+            if file_path.is_file() and file_path.suffix in CODE_EXTENSIONS:
+                if not any(excluded in file_path.parts for excluded in EXCLUDE_DIRS):
                     files.append(file_path)
                     if len(files) >= max_files:
                         break
@@ -541,9 +538,8 @@ async def run_github_analysis(repo_url: str, token: Optional[str] = None):
                 status.update(label="📂 Fetching files...", state="running")
                 files = await client.list_files_recursive(owner, repo_name)
                 
-                code_extensions = {'.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.go', '.rs', '.rb'}
                 code_files = [f for f in files if f.type == 'file' and 
-                             any(f.path.endswith(ext) for ext in code_extensions)][:max_files]
+                             any(f.path.endswith(ext) for ext in CODE_EXTENSIONS)][:max_files]
                 
                 if not code_files:
                     st.warning("No code files found")

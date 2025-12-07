@@ -12,9 +12,10 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Callable, Awaitable
 from collections import OrderedDict
 import asyncio
-import logging
 
-logger = logging.getLogger(__name__)
+from omniscient_core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass

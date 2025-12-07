@@ -24,7 +24,18 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Install package
+      - name: Install sub-packages
+        run: |
+          # Install packages in dependency order
+          pip install -e packages/core
+          pip install -e packages/llm
+          pip install -e packages/tools
+          pip install -e packages/github
+          pip install -e packages/agents
+          pip install -e packages/api
+          pip install -e packages/rag
+
+      - name: Install meta-package
         run: pip install -e .
 
       - name: Run tests

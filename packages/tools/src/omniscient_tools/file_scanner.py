@@ -4,7 +4,7 @@ import fnmatch
 from pathlib import Path
 from typing import List, Optional
 
-from omniscient_core import FileAnalysis
+from omniscient_core import FileAnalysis, detect_language
 
 
 class FileScanner:
@@ -184,40 +184,7 @@ class FileScanner:
         Returns:
             Language name
         """
-        ext_map = {
-            ".py": "Python",
-            ".js": "JavaScript",
-            ".ts": "TypeScript",
-            ".jsx": "JavaScript",
-            ".tsx": "TypeScript",
-            ".java": "Java",
-            ".go": "Go",
-            ".rs": "Rust",
-            ".rb": "Ruby",
-            ".php": "PHP",
-            ".c": "C",
-            ".cpp": "C++",
-            ".h": "C",
-            ".hpp": "C++",
-            ".cs": "C#",
-            ".swift": "Swift",
-            ".kt": "Kotlin",
-            ".scala": "Scala",
-            ".md": "Markdown",
-            ".json": "JSON",
-            ".yaml": "YAML",
-            ".yml": "YAML",
-            ".toml": "TOML",
-            ".xml": "XML",
-            ".html": "HTML",
-            ".css": "CSS",
-            ".scss": "SCSS",
-            ".sql": "SQL",
-            ".sh": "Shell",
-            ".bash": "Bash",
-            ".ps1": "PowerShell",
-        }
-        return ext_map.get(path.suffix.lower(), "Unknown")
+        return detect_language(path)
     
     def get_language_stats(self, files: List[FileAnalysis]) -> dict:
         """Get statistics by programming language.
