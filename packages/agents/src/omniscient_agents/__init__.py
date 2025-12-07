@@ -1,5 +1,6 @@
 """Omniscient Agents - AI analysis agents for code review."""
 
+from omniscient_core import AnalysisStatus
 from .architecture import ArchitectureAgent
 from .efficiency import EfficiencyAgent
 from .reliability import ReliabilityAgent
@@ -10,7 +11,6 @@ from .orchestrator import (
     StreamingOrchestrator,
     AnalysisResult,
     AnalysisProgress,
-    AnalysisStatus,
     AnalysisTask,
 )
 from .llm_agent import LLMAgent, CodeReviewAgent, LLMAgentResponse, Issue
