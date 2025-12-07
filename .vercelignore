@@ -11,6 +11,10 @@ build/
 venv/
 .pytest_cache/
 
+# Ignore pyproject.toml to force use of requirements.txt
+# (sub-packages aren't on PyPI)
+pyproject.toml
+
 # Development
 .git/
 .vscode/
