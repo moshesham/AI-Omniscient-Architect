@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any, Callable, AsyncIterator
 from uuid import UUID
 
+from omniscient_core import AsyncContextMixin
+
 from .models import Document, Chunk, RAGConfig, RetrievalResult, KnowledgeScore
 from .chunkers import ChunkerFactory, BaseChunker
 from .store import PostgresVectorStore, DatabaseConfig
@@ -12,7 +14,7 @@ from .search import HybridSearcher, SearchConfig
 from .metrics import KnowledgeScorer, QuestionGenerator, ScoringConfig
 
 
-class RAGPipeline:
+class RAGPipeline(AsyncContextMixin):
     """Main RAG pipeline orchestrator.
     
     Coordinates all RAG components:
@@ -136,13 +138,6 @@ class RAGPipeline:
     async def close(self) -> None:
         """Close database connection."""
         await self.store.close()
-    
-    async def __aenter__(self) -> "RAGPipeline":
-        await self.initialize()
-        return self
-    
-    async def __aexit__(self, *args) -> None:
-        await self.close()
     
     # =========================================================================
     # Ingestion

@@ -3,6 +3,8 @@
 from abc import ABC, abstractmethod
 from typing import AsyncIterator, Optional, List
 
+from omniscient_core import AsyncContextMixin
+
 from .models import (
     LLMConfig,
     LLMResponse,
@@ -14,7 +16,7 @@ from .models import (
 )
 
 
-class BaseLLMProvider(ABC):
+class BaseLLMProvider(AsyncContextMixin, ABC):
     """Abstract base class for LLM providers.
     
     Implement this class to add support for new LLM providers.
@@ -66,15 +68,6 @@ class BaseLLMProvider(ABC):
         Override to clean up connections, etc.
         """
         self._initialized = False
-    
-    async def __aenter__(self) -> "BaseLLMProvider":
-        """Async context manager entry."""
-        await self.initialize()
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Async context manager exit."""
-        await self.close()
     
     @abstractmethod
     async def generate(self, request: GenerationRequest) -> LLMResponse:
