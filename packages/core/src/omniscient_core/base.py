@@ -94,13 +94,24 @@ class BaseAIAgent(ABC):
         """
         pass
 
-    @abstractmethod
+    def get_default_objective(self) -> str:
+        """Get default analysis objective for this agent.
+        
+        Can be overridden by subclasses to provide agent-specific objectives.
+        
+        Returns:
+            Default objective string
+        """
+        return f"Analyze codebase for {self.analysis_focus} issues."
+    
     async def analyze(
         self,
         files: List[FileAnalysis],
         repo_info: RepositoryInfo
     ) -> AgentResponse:
         """Run analysis and return structured agent response.
+        
+        Default implementation that can be overridden for custom behavior.
         
         Args:
             files: List of FileAnalysis objects to analyze
@@ -109,7 +120,12 @@ class BaseAIAgent(ABC):
         Returns:
             AgentResponse with findings, confidence, and recommendations
         """
-        pass
+        context = f"Repo path: {repo_info.path}\nBranch: {repo_info.branch}"
+        objective = repo_info.project_objective or self.get_default_objective()
+        files_info = self.prepare_files_context(files)
+        response = await self.call_llm(context, objective, files_info)
+        response.agent_name = self.name
+        return response
 
     def prepare_files_context(self, files: List[FileAnalysis], max_files: int = 10) -> str:
         """Prepare a context string from file analyses.
