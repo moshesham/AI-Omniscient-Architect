@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from typing import List, Optional, Dict, Any, Callable, AsyncIterator
+from typing import List, Optional, Dict, Any, Callable, AsyncIterator, Union
 from uuid import UUID
 
 from omniscient_core import AsyncContextMixin
@@ -93,142 +93,117 @@ class RAGPipeline(AsyncContextMixin):
     def create(
         cls,
         db_url: str,
-        embed_fn: Callable[[str], Any],
+        embed_fn: Union[Callable[[str], Any], Any],
         llm_fn: Optional[Callable[[str], Any]] = None,
         chunking_strategy: str = "auto",
         chunk_size: int = 512,
         chunk_overlap: float = 0.1,
-        **kwargs,
+        top_k: int = 5,
+        hybrid_alpha: float = 0.5,
+        config_overrides: Optional[Dict[str, Any]] = None,
     ) -> "RAGPipeline":
         """Factory method to create a RAG pipeline.
-        
-        Args:
-            db_url: PostgreSQL connection URL
-            embed_fn: Async embedding function
-            llm_fn: Optional async LLM function
-            chunking_strategy: Chunking strategy name
-            chunk_size: Target chunk size in tokens
-            chunk_overlap: Overlap ratio
-            **kwargs: Additional RAGConfig options
-            
-        Returns:
-            Configured RAGPipeline instance
+
+        ``embed_fn`` may be a callable or a provider instance (e.g., OllamaProvider).
+        If a provider instance is passed, ``embed`` and ``generate_text`` will be used.
         """
-        store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
-        chunker = ChunkerFactory.create(chunking_strategy, chunk_size, chunk_overlap)
-        config = RAGConfig(
+        base_config = RAGConfig(
             chunking_strategy=chunking_strategy,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
-            **kwargs,
+            top_k=top_k,
+            hybrid_alpha=hybrid_alpha,
         )
-        
-        return cls(
-            store=store,
-            chunker=chunker,
-            embed_fn=embed_fn,
-            llm_fn=llm_fn,
-            config=config,
-        )
-    
+        if config_overrides:
+            for k, v in config_overrides.items():
+                if hasattr(base_config, k):
+                    setattr(base_config, k, v)
+
+        store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
+        chunker = ChunkerFactory.create(chunking_strategy, chunk_size, chunk_overlap)
+
+        resolved_embed_fn = embed_fn
+        resolved_llm_fn = llm_fn
+        if hasattr(embed_fn, "embed"):
+            resolved_embed_fn = embed_fn.embed  # type: ignore
+        if resolved_llm_fn is None and hasattr(embed_fn, "generate_text"):
+            resolved_llm_fn = embed_fn.generate_text  # type: ignore
+
+        return cls(store, chunker, resolved_embed_fn, resolved_llm_fn, base_config)
+
     async def initialize(self) -> None:
         """Initialize database connection and schema."""
         await self.store.initialize()
-    
+
     async def close(self) -> None:
         """Close database connection."""
         await self.store.close()
-    
+
     # =========================================================================
     # Ingestion
     # =========================================================================
-    
+
     async def ingest_document(
         self,
         document: Document,
         generate_questions: Optional[bool] = None,
     ) -> Dict[str, Any]:
-        """Ingest a single document.
-        
-        Args:
-            document: Document to ingest
-            generate_questions: Override auto-question generation
-            
-        Returns:
-            Ingestion result with chunk count and stats
-        """
+        """Ingest a single document."""
         generate_q = generate_questions if generate_questions is not None else self.config.auto_generate_questions
-        
+
         # Store document
         await self.store.insert_document(document)
-        
+
         # Chunk document
         chunks = self.chunker.chunk(document)
-        
+
         # Generate embeddings
         texts = [c.content for c in chunks]
         embeddings = await self._embed_batch(texts)
-        
+
         for chunk, embedding in zip(chunks, embeddings):
             chunk.embedding = embedding
-        
+
         # Store chunks
         await self.store.insert_chunks(chunks)
-        
+
         # Generate test questions (on ingestion)
         questions_generated = 0
         if generate_q and self.question_generator:
             questions = await self.question_generator.generate(document)
             await self.store.insert_questions(questions)
             questions_generated = len(questions)
-        
+
         return {
             "document_id": str(document.id),
             "source": document.source,
             "chunks_created": len(chunks),
             "questions_generated": questions_generated,
         }
-    
+
     async def ingest_text(
         self,
         content: str,
         source: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Ingest text content as a document.
-        
-        Args:
-            content: Text content
-            source: Source identifier
-            metadata: Optional metadata
-            
-        Returns:
-            Ingestion result
-        """
+        """Ingest text content as a document."""
         document = Document(
             content=content,
             source=source,
             metadata=metadata or {},
         )
         return await self.ingest_document(document)
-    
+
     async def ingest_file(
         self,
         file_path: Path,
         encoding: str = "utf-8",
     ) -> Dict[str, Any]:
-        """Ingest a file.
-        
-        Args:
-            file_path: Path to file
-            encoding: File encoding
-            
-        Returns:
-            Ingestion result
-        """
+        """Ingest a file."""
         path = Path(file_path)
         content = path.read_text(encoding=encoding)
-        
+
         document = Document(
             content=content,
             source=str(path),
@@ -239,7 +214,7 @@ class RAGPipeline(AsyncContextMixin):
             },
         )
         return await self.ingest_document(document)
-    
+
     async def ingest_directory(
         self,
         directory: Path,
@@ -247,22 +222,12 @@ class RAGPipeline(AsyncContextMixin):
         recursive: bool = True,
         progress_callback: Optional[Callable[[int, int, str], None]] = None,
     ) -> Dict[str, Any]:
-        """Ingest all matching files from a directory.
-        
-        Args:
-            directory: Directory path
-            patterns: Glob patterns to match (default: common doc/code extensions)
-            recursive: Search subdirectories
-            progress_callback: Optional callback(current, total, filename)
-            
-        Returns:
-            Summary with total documents and chunks
-        """
+        """Ingest all matching files from a directory."""
         directory = Path(directory)
-        
+
         if patterns is None:
             patterns = ["*.md", "*.txt", "*.rst", "*.py", "*.js", "*.ts", "*.yaml", "*.json"]
-        
+
         # Collect files
         files = []
         for pattern in patterns:
@@ -270,7 +235,7 @@ class RAGPipeline(AsyncContextMixin):
                 files.extend(directory.rglob(pattern))
             else:
                 files.extend(directory.glob(pattern))
-        
+
         # Filter out hidden files and common excludes
         files = [
             f for f in files
@@ -278,14 +243,14 @@ class RAGPipeline(AsyncContextMixin):
             and 'node_modules' not in str(f)
             and '__pycache__' not in str(f)
         ]
-        
+
         results = []
         total = len(files)
-        
+
         for i, file_path in enumerate(files):
             if progress_callback:
                 progress_callback(i + 1, total, file_path.name)
-            
+
             try:
                 result = await self.ingest_file(file_path)
                 results.append(result)
@@ -295,10 +260,10 @@ class RAGPipeline(AsyncContextMixin):
                     "error": str(e),
                     "chunks_created": 0,
                 })
-        
+
         successful = [r for r in results if "error" not in r]
         failed = [r for r in results if "error" in r]
-        
+
         return {
             "total_files": total,
             "successful": len(successful),
@@ -307,20 +272,38 @@ class RAGPipeline(AsyncContextMixin):
             "total_questions": sum(r.get("questions_generated", 0) for r in successful),
             "failures": failed,
         }
-    
+
     async def _embed_batch(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for multiple texts."""
-        embeddings = []
-        
-        # Check if embed_fn supports batch
+        """Generate embeddings for multiple texts using pipeline config hints."""
+        # Try batch path if available
         if hasattr(self.embed_fn, 'embed_batch'):
-            return await self.embed_fn.embed_batch(texts)
-        
+            try:
+                return await self.embed_fn.embed_batch(  # type: ignore
+                    texts,
+                    serial_processing=getattr(self.config, "embedding_batch_serial", True),
+                    timeout=getattr(self.config, "embedding_timeout", None),
+                    max_retries=getattr(self.config, "embedding_max_retries", 2),
+                )
+            except TypeError:
+                # Fall back if the embed_fn doesn't accept these kwargs
+                return await self.embed_fn.embed_batch(texts)  # type: ignore
+
         # Otherwise, process one at a time
+        embeddings = []
         for text in texts:
-            embedding = await self.embed_fn(text)
+            kwargs: Dict[str, Any] = {}
+            timeout_val = getattr(self.config, "embedding_timeout", None)
+            if timeout_val:
+                kwargs["timeout"] = timeout_val
+            retries_val = getattr(self.config, "embedding_max_retries", None)
+            if retries_val:
+                kwargs["max_retries"] = retries_val
+            try:
+                embedding = await self.embed_fn(text, **kwargs)
+            except TypeError:
+                embedding = await self.embed_fn(text)
             embeddings.append(embedding)
-        
+
         return embeddings
     
     # =========================================================================

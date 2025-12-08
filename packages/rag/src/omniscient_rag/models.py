@@ -189,6 +189,10 @@ class RAGConfig:
     chunk_overlap: float = 0.1
     embedding_model: str = "nomic-embed-text"
     embedding_dimensions: int = 768
+    # Embedding robustness controls
+    embedding_timeout: float = 30.0
+    embedding_max_retries: int = 2
+    embedding_batch_serial: bool = True
     top_k: int = 5
     hybrid_alpha: float = 0.5
     auto_generate_questions: bool = True
@@ -208,3 +212,7 @@ class RAGConfig:
             raise ValueError("chunk_size must be at least 64 tokens")
         if self.top_k < 1:
             raise ValueError("top_k must be at least 1")
+        if self.embedding_timeout <= 0:
+            raise ValueError("embedding_timeout must be positive")
+        if self.embedding_max_retries < 1:
+            raise ValueError("embedding_max_retries must be at least 1")

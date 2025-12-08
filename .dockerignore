@@ -1,6 +1,8 @@
 # Git
-.git
+.git/
 .gitignore
+.gitattributes
+.github/
 
 # Python
 __pycache__/
@@ -8,8 +10,19 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
 env/
 venv/
+.venv/
 ENV/
 env.bak/
 venv.bak/
@@ -20,6 +33,8 @@ venv.bak/
 *.swp
 *.swo
 *~
+.project
+.pydevproject
 
 # OS
 .DS_Store
@@ -29,24 +44,52 @@ venv.bak/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Docker
-Dockerfile
-docker-compose.yml
+# Docker (exclude from image)
+Dockerfile*
+docker-compose*.yml
 .dockerignore
+docker-manage.ps1
+modularity_docker_review.md
 
-# Documentation (optional - remove if you want docs in container)
+# Documentation (keep essential docs)
 *.md
 !README.md
+!LEARNING_SYSTEM.md
+!LEARNING_QUICKSTART.md
+docs/
+roadmap/
+examples/
 
-# Tests (optional - remove if you want tests in container)
+# Tests (exclude from production)
 tests/
+test_*.py
+*_test.py
 
 # Development files
-.env
-.env.local
-.env.production
-.env.staging
+.env*
+!.env.example
+*.local
+.env.pypi
+
+# Scripts (exclude dev scripts)
+scripts/
+*.sh
+*.ps1
+
+# Data and logs
+*.log
+logs/
+data/
+knowledge/
+
+# Compiled and temporary files
+*.so
+*.dll
+*.dylib
+.tox/
+.nox/
 
 # Logs
 *.log

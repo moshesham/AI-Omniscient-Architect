@@ -28,9 +28,18 @@ try:
     from omniscient_rag import RAGPipeline, RAGConfig, ChunkerFactory
     from omniscient_rag.store import PostgresVectorStore, DatabaseConfig
     from omniscient_rag.metrics import KnowledgeScorer
+    from omniscient_rag.learning import (
+        KnowledgeMemory,
+        FeedbackLearner,
+        ContextInjector,
+        InjectionConfig,
+        FeedbackType,
+    )
     HAS_RAG = True
-except ImportError:
+    HAS_LEARNING = True
+except ImportError as e:
     HAS_RAG = False
+    HAS_LEARNING = False
 
 # =============================================================================
 # Page Configuration
@@ -226,6 +235,11 @@ def init_session_state():
         'chunking_strategy': 'auto',
         'chunk_size': 512,
         'hybrid_alpha': 0.5,
+        # Learning state
+        'current_query': None,
+        'current_answer': None,
+        'retrieved_chunks': None,
+        'learned_knowledge': None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -235,6 +249,48 @@ def init_session_state():
 # =============================================================================
 # Async Helpers
 # =============================================================================
+
+class ResourceManager:
+    """Context manager for database and LLM resources."""
+    
+    def __init__(self, db_url: str, model_name: str):
+        self.db_url = db_url
+        self.model_name = model_name
+        self.provider = None
+        self.store = None
+    
+    async def __aenter__(self):
+        """Initialize resources."""
+        self.provider = OllamaProvider(model=self.model_name)
+        await self.provider.initialize()
+        
+        self.store = PostgresVectorStore(DatabaseConfig(connection_string=self.db_url))
+        await self.store.initialize()
+        
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Cleanup resources."""
+        if self.store:
+            try:
+                await self.store.close()
+            except Exception:
+                pass
+        if self.provider:
+            try:
+                await self.provider.close()
+            except Exception:
+                pass
+    
+    async def embed(self, text: str):
+        """Embed text using the provider."""
+        return await self.provider.embed(text)
+    
+    async def generate(self, prompt: str) -> str:
+        """Generate text using the provider."""
+        response = await self.provider.generate(prompt)
+        return response.content
+
 
 async def check_ollama_status() -> tuple[bool, list]:
     """Check Ollama availability and get models."""
@@ -823,6 +879,36 @@ def render_knowledge_base():
         if st.button("📊 Evaluate Knowledge", use_container_width=True):
             asyncio.run(evaluate_knowledge(db_url))
     
+    # View Learned Knowledge section
+    if HAS_LEARNING:
+        with st.expander("🧠 View Learned Knowledge"):
+            st.markdown("See what the AI has learned from previous interactions")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("📚 View Learned Facts", use_container_width=True):
+                    asyncio.run(view_learned_facts(db_url))
+            with col2:
+                if st.button("🔄 View Query Patterns", use_container_width=True):
+                    asyncio.run(view_query_refinements(db_url))
+            
+            # Display learned facts
+            learned_facts = st.session_state.get('learned_facts', [])
+            if learned_facts:
+                st.markdown("**Learned Facts:**")
+                for fact in learned_facts[:10]:  # Show top 10
+                    confidence = fact.get('confidence', 0)
+                    st.markdown(f"- **{fact.get('topic', 'Unknown')}**: {fact.get('fact', '')}")
+                    st.caption(f"Confidence: {confidence:.0%} | Used: {fact.get('usage_count', 0)} times | Success: {fact.get('success_rate', 0):.0%}")
+            
+            # Display query refinements
+            refinements = st.session_state.get('query_refinements', [])
+            if refinements:
+                st.markdown("**Query Refinement Patterns:**")
+                for ref in refinements[:5]:  # Show top 5
+                    st.markdown(f"- '{ref.get('original_query', '')}' → '{ref.get('refined_query', '')}'")
+                    st.caption(f"Applied: {ref.get('times_applied', 0)} times | Success: {ref.get('success_rate', 0):.0%}")
+    
     st.markdown("---")
     
     # Query Section
@@ -837,10 +923,53 @@ def render_knowledge_base():
     if st.button("🔎 Search", use_container_width=False) and query_text:
         asyncio.run(query_knowledge_base(query_text, db_url))
     
-    # Display query results
+    # Display AI answer and feedback
+    current_answer = st.session_state.get('current_answer')
+    current_query = st.session_state.get('current_query')
+    
+    if current_answer and current_query:
+        st.markdown("---")
+        st.markdown("##### 🤖 AI Answer")
+        
+        # Show learned knowledge context if available
+        learned_knowledge = st.session_state.get('learned_knowledge')
+        if learned_knowledge and HAS_LEARNING:
+            with st.expander("🧠 Using Learned Knowledge"):
+                st.info(f"The AI is using {learned_knowledge.count('Learned Fact') if learned_knowledge else 0} facts from previous interactions")
+                st.markdown(learned_knowledge)
+        
+        st.markdown(current_answer)
+        
+        # Feedback section
+        if HAS_LEARNING:
+            st.markdown("##### 📝 Rate this answer to help the AI learn")
+            
+            col1, col2, col3 = st.columns([1, 2, 1])
+            
+            with col1:
+                if st.button("👍 Helpful", key="feedback_positive", use_container_width=True):
+                    asyncio.run(submit_feedback(db_url, rating=0.9, feedback_type="positive"))
+                    
+            with col2:
+                rating = st.slider("Custom Rating", 1, 5, 3, key="custom_rating")
+                if st.button("Submit Rating", key="feedback_rating", use_container_width=True):
+                    asyncio.run(submit_feedback(db_url, rating=rating/5.0, feedback_type="neutral"))
+                    
+            with col3:
+                if st.button("👎 Not Helpful", key="feedback_negative", use_container_width=True):
+                    asyncio.run(submit_feedback(db_url, rating=-0.5, feedback_type="negative"))
+            
+            # Optional correction field
+            correction = st.text_area("💡 Provide the correct answer (optional):", key="correction_text", height=100)
+            if correction and st.button("Submit Correction", key="submit_correction"):
+                asyncio.run(submit_feedback(db_url, rating=-1.0, feedback_type="correction", correction=correction))
+        
+        st.markdown("---")
+    
+    # Display retrieved sources
     query_results = st.session_state.get('query_results')
     if query_results:
-        st.markdown("##### Results")
+        st.markdown("##### 📚 Retrieved Sources")
         for i, result in enumerate(query_results, 1):
             with st.expander(f"#{i} - {result.get('source', 'Unknown')} (score: {result.get('score', 0):.3f})"):
                 st.markdown(result.get('content', ''))
@@ -982,47 +1111,235 @@ async def evaluate_knowledge(db_url: str):
 
 
 async def query_knowledge_base(query: str, db_url: str):
-    """Query the knowledge base."""
+    """Query the knowledge base with learning enhancement."""
     model_name = st.session_state.get('selected_model', 'qwen2.5-coder:1.5b')
     alpha = st.session_state.get('hybrid_alpha', 0.5)
     
-    with st.spinner("🔍 Searching..."):
+    with st.spinner("🔍 Searching and generating answer..."):
         try:
-            provider = OllamaProvider(model=model_name)
-            await provider.initialize()
-            
-            store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
-            await store.initialize()
-            
-            async def embed_fn(text):
-                return await provider.embed(text)
-            
-            from omniscient_rag.search import HybridSearcher, SearchConfig
-            searcher = HybridSearcher(
-                store,
-                embed_fn,
-                SearchConfig(top_k=5, alpha=alpha),
-            )
-            
-            results = await searcher.search(query)
-            
-            await store.close()
-            await provider.close()
-            
-            # Store results
-            st.session_state['query_results'] = [
-                {
-                    'source': r.source,
-                    'content': r.chunk.content,
-                    'score': r.combined_score,
-                    'vector_score': r.vector_score,
-                    'bm25_score': r.bm25_score,
-                }
-                for r in results
-            ]
+            async with ResourceManager(db_url, model_name) as rm:
+                # Initialize learning components if available
+                memory = None
+                injector = None
+                learned_context = None
+                
+                if HAS_LEARNING:
+                    try:
+                        memory = KnowledgeMemory(rm.store, rm.embed)
+                        await memory.initialize()
+                        
+                        injector = ContextInjector(
+                            memory,
+                            InjectionConfig(
+                                max_facts=5,
+                                max_reasoning_chains=2,
+                                include_few_shot_reasoning=True,
+                            )
+                        )
+                        
+                        # Get learned knowledge for this query
+                        learned_context = await injector.build_context(query)
+                        st.session_state['learned_knowledge'] = learned_context
+                    except Exception as e:
+                        st.warning(f"Learning features unavailable: {e}")
+                
+                from omniscient_rag.search import HybridSearcher, SearchConfig
+                searcher = HybridSearcher(
+                    rm.store,
+                    rm.embed,
+                    SearchConfig(top_k=5, alpha=alpha),
+                )
+                
+                results = await searcher.search(query)
+                
+                if not results:
+                    st.warning("No relevant information found in the knowledge base.")
+                    return
+                
+                # Generate answer using retrieved context + learned knowledge
+                context_text = "\n\n".join([f"[{r.source}]\n{r.chunk.content}" for r in results])
+                
+                prompt = f"""
+{learned_context if learned_context else ''}
+
+## Context from Knowledge Base:
+{context_text}
+
+## Question:
+{query}
+
+## Instructions:
+Based on the context and any learned knowledge above, provide a clear, accurate answer.
+If the context doesn't contain enough information, say so.
+
+Answer:"""
+                
+                answer = await rm.generate(prompt)
+                
+                # Store query info for feedback
+                st.session_state['current_query'] = query
+                st.session_state['current_answer'] = answer
+                st.session_state['retrieved_chunks'] = results
+                
+                # Store results
+                st.session_state['query_results'] = [
+                    {
+                        'source': r.source,
+                        'content': r.chunk.content,
+                        'score': r.combined_score,
+                        'vector_score': r.vector_score,
+                        'bm25_score': r.bm25_score,
+                        'chunk_id': str(r.chunk.id),
+                    }
+                    for r in results
+                ]
             
         except Exception as e:
             st.error(f"Query failed: {e}")
+            import traceback
+            st.error(f"Details: {traceback.format_exc()}")
+
+
+async def submit_feedback(db_url: str, rating: float, feedback_type: str, correction: Optional[str] = None):
+    """Submit user feedback to improve the AI's learning."""
+    current_query = st.session_state.get('current_query')
+    current_answer = st.session_state.get('current_answer')
+    retrieved_chunks = st.session_state.get('retrieved_chunks', [])
+    
+    if not current_query or not current_answer:
+        st.warning("No active query to provide feedback on")
+        return
+    
+    if not HAS_LEARNING:
+        st.warning("Learning module not available")
+        return
+    
+    with st.spinner("💾 Saving feedback and learning..."):
+        try:
+            model_name = st.session_state.get('selected_model', 'qwen2.5-coder:1.5b')
+            
+            async with ResourceManager(db_url, model_name) as rm:
+                # Initialize learning components
+                memory = KnowledgeMemory(rm.store, rm.embed)
+                await memory.initialize()
+                
+                learner = FeedbackLearner(memory, rm.generate)
+                
+                # Map feedback type string to enum
+                feedback_type_map = {
+                    "positive": FeedbackType.POSITIVE,
+                    "negative": FeedbackType.NEGATIVE,
+                    "neutral": FeedbackType.NEUTRAL,
+                    "correction": FeedbackType.CORRECTION,
+                }
+                
+                # Process feedback and learn
+                learned = await learner.process_feedback(
+                    question=current_query,
+                    answer=current_answer,
+                    rating=rating,
+                    feedback_type=feedback_type_map.get(feedback_type, FeedbackType.NEUTRAL),
+                    correction=correction,
+                    retrieved_chunks=retrieved_chunks,
+                )
+                
+                # Show what was learned
+                st.success("✅ Feedback submitted successfully!")
+                
+                learned_summary = []
+                if learned.get('facts_extracted', 0) > 0:
+                    learned_summary.append(f"📝 Extracted {learned['facts_extracted']} new fact(s)")
+                if learned.get('reasoning_stored'):
+                    learned_summary.append("🧠 Stored reasoning pattern")
+                if learned.get('refinement_learned'):
+                    learned_summary.append("🔄 Learned query refinement")
+                
+                if learned_summary:
+                    st.info("**What I learned:**\n" + "\n".join(f"- {item}" for item in learned_summary))
+            
+        except Exception as e:
+            st.error(f"Failed to process feedback: {e}")
+            import traceback
+            st.error(f"Details: {traceback.format_exc()}")
+
+
+async def view_learned_facts(db_url: str):
+    """View facts the AI has learned."""
+    if not HAS_LEARNING:
+        return
+    
+    with st.spinner("📚 Loading learned facts..."):
+        try:
+            store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
+            await store.initialize()
+            
+            memory = KnowledgeMemory(store, None)
+            await memory.initialize()
+            
+            # Get all facts ordered by confidence and usage
+            async with store._pool.connection() as conn:
+                cursor = await conn.execute(f"""
+                    SELECT topic, fact, confidence, usage_count, success_rate, created_at
+                    FROM {store.config.schema}.learned_facts
+                    ORDER BY confidence DESC, usage_count DESC
+                    LIMIT 50
+                """)
+                rows = await cursor.fetchall()
+            
+            await store.close()
+            
+            st.session_state['learned_facts'] = [
+                {
+                    'topic': row[0],
+                    'fact': row[1],
+                    'confidence': row[2],
+                    'usage_count': row[3],
+                    'success_rate': row[4],
+                }
+                for row in rows
+            ]
+            
+        except Exception as e:
+            st.error(f"Failed to load learned facts: {e}")
+
+
+async def view_query_refinements(db_url: str):
+    """View query refinement patterns the AI has learned."""
+    if not HAS_LEARNING:
+        return
+    
+    with st.spinner("🔄 Loading query patterns..."):
+        try:
+            store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
+            await store.initialize()
+            
+            memory = KnowledgeMemory(store, None)
+            await memory.initialize()
+            
+            # Get query refinements ordered by success rate
+            async with store._pool.connection() as conn:
+                cursor = await conn.execute(f"""
+                    SELECT original_query, refined_query, times_applied, success_rate
+                    FROM {store.config.schema}.query_refinements
+                    ORDER BY success_rate DESC, times_applied DESC
+                    LIMIT 20
+                """)
+                rows = await cursor.fetchall()
+            
+            await store.close()
+            
+            st.session_state['query_refinements'] = [
+                {
+                    'original_query': row[0],
+                    'refined_query': row[1],
+                    'times_applied': row[2],
+                    'success_rate': row[3],
+                }
+                for row in rows
+            ]
+            
+        except Exception as e:
+            st.error(f"Failed to load query refinements: {e}")
 
 
 if __name__ == "__main__":

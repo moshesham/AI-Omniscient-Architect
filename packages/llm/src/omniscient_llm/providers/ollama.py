@@ -119,6 +119,32 @@ class OllamaProvider(BaseLLMProvider):
         except Exception:
             return False
     
+    async def generate_text(
+        self,
+        prompt: str,
+        *,
+        system_prompt: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: float = 0.7,
+        top_p: float = 0.9,
+        top_k: int = 40,
+    ) -> str:
+        """Convenience helper to generate text from a raw prompt.
+        
+        This wraps ``generate`` so callers (e.g., QuestionGenerator) do not
+        need to construct ``GenerationRequest`` themselves.
+        """
+        request = GenerationRequest(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+        )
+        response = await self.generate(request)
+        return response.content
+
     async def generate(self, request: GenerationRequest) -> LLMResponse:
         """Generate text using Ollama.
         
@@ -390,40 +416,48 @@ class OllamaProvider(BaseLLMProvider):
         self,
         text: str,
         model: Optional[str] = None,
+        *,
+        timeout: Optional[float] = None,
+        max_retries: int = 2,
     ) -> List[float]:
-        """Generate embedding for a single text.
-        
-        Args:
-            text: Text to embed
-            model: Embedding model (default: nomic-embed-text)
-            
-        Returns:
-            List of floats (embedding vector)
-        """
+        """Generate embedding for a single text with retry and timeout."""
         if not self._client:
             await self.initialize()
-        
+
         embed_model = model or "nomic-embed-text"
-        
-        try:
-            response = await self._client.post(  # type: ignore
-                "/api/embeddings",
-                json={
-                    "model": embed_model,
-                    "prompt": text,
-                }
-            )
-            response.raise_for_status()
-            data = response.json()
-            
-            return data.get("embedding", [])
-            
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                raise ModelNotFoundError(embed_model, "ollama")
-            raise GenerationError("ollama", f"Embedding failed: {e}", e)
-        except Exception as e:
-            raise GenerationError("ollama", f"Embedding failed: {e}", e)
+        last_err: Optional[Exception] = None
+        for attempt in range(max_retries):
+            try:
+                coro = self._client.post(  # type: ignore
+                    "/api/embeddings",
+                    json={
+                        "model": embed_model,
+                        "prompt": text,
+                    }
+                )
+                response = await asyncio.wait_for(
+                    coro,
+                    timeout=timeout or self.config.timeout_seconds,
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data.get("embedding", [])
+            except asyncio.TimeoutError as e:
+                last_err = e
+                logger.warning(
+                    "Ollama embedding timeout (attempt %s/%s)",
+                    attempt + 1,
+                    max_retries,
+                )
+            except httpx.HTTPStatusError as e:
+                last_err = e
+                if e.response.status_code == 404:
+                    raise ModelNotFoundError(embed_model, "ollama")
+            except Exception as e:
+                last_err = e
+                logger.warning("Ollama embedding error: %s", e)
+
+        raise GenerationError("ollama", f"Embedding failed after retries: {last_err}", last_err)
     
     async def embed_batch(
         self,
@@ -431,53 +465,64 @@ class OllamaProvider(BaseLLMProvider):
         model: Optional[str] = None,
         batch_size: int = 32,
         max_concurrency: int = 5,
+        *,
+        serial_processing: bool = True,
+        timeout: Optional[float] = None,
+        max_retries: int = 2,
     ) -> List[List[float]]:
-        """Generate embeddings for multiple texts with concurrent processing.
-        
-        Args:
-            texts: List of texts to embed
-            model: Embedding model (default: nomic-embed-text)
-            batch_size: Number of texts per batch
-            max_concurrency: Max concurrent embedding requests
-            
-        Returns:
-            List of embedding vectors
+        """Generate embeddings for multiple texts.
+
+        serial_processing=True is safer for local Ollama to avoid hangs.
         """
         if not self._client:
             await self.initialize()
-        
+
         embed_model = model or "nomic-embed-text"
+
+        # Serial path (default, safest)
+        if serial_processing:
+            results: List[List[float]] = []
+            for text in texts:
+                results.append(
+                    await self.embed(
+                        text,
+                        embed_model,
+                        timeout=timeout,
+                        max_retries=max_retries,
+                    )
+                )
+            return results
+
         embeddings: List[Optional[List[float]]] = [None] * len(texts)
-        
-        # Semaphore to limit concurrency
         semaphore = asyncio.Semaphore(max_concurrency)
-        
+
         async def embed_with_index(idx: int, text: str) -> tuple[int, List[float]]:
-            """Embed single text with concurrency limit."""
             async with semaphore:
-                embedding = await self.embed(text, embed_model)
+                embedding = await self.embed(
+                    text,
+                    embed_model,
+                    timeout=timeout,
+                    max_retries=max_retries,
+                )
                 return idx, embedding
-        
-        # Process in batches with concurrent embedding within each batch
+
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i + batch_size]
             batch_indices = list(range(i, i + len(batch)))
-            
-            # Create tasks for concurrent embedding
             tasks = [
-                embed_with_index(idx, text) 
+                embed_with_index(idx, text)
                 for idx, text in zip(batch_indices, batch)
             ]
-            
-            # Run batch concurrently
             results = await asyncio.gather(*tasks)
-            
-            # Store results in correct order
             for idx, embedding in results:
                 embeddings[idx] = embedding
-            
-            logger.debug(f"Embedded batch {i//batch_size + 1}, total: {i + len(batch)}/{len(texts)}")
-        
+            logger.debug(
+                "Embedded batch %s, total: %s/%s",
+                i // batch_size + 1,
+                i + len(batch),
+                len(texts),
+            )
+
         return [e for e in embeddings if e is not None]  # type: ignore
     
     async def get_embedding_models(self) -> List[str]:

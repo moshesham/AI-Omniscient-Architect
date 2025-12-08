@@ -11,8 +11,13 @@ services:
       POSTGRES_DB: omniscient
       POSTGRES_USER: omniscient
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
+      # Performance tuning
+      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-256MB}
+      POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-1GB}
+      POSTGRES_WORK_MEM: ${POSTGRES_WORK_MEM:-16MB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U omniscient -d omniscient"]
@@ -20,8 +25,16 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    networks:
+      - omniscient-network
 
-  # Ollama service for AI model inference (pinned tag for stability)
+  # Ollama service for AI model inference
   ollama:
     image: ollama/ollama:0.13.0
     container_name: omniscient-architect-ollama
@@ -30,12 +43,31 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    networks:
+      - omniscient-network
     # Pull embedding model on startup
-    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull nomic-embed-text && wait"]
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 10 && ollama pull nomic-embed-text && wait"]
 
-  # Main application service (production-friendly: no host mounts)
+  # Main application service
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      cache_from:
+        - omniscient-architect-app:latest
+    image: omniscient-architect-app:latest
     container_name: omniscient-architect-app
     ports:
       - "8501:8501"
@@ -43,25 +75,44 @@ services:
       - OLLAMA_HOST=http://ollama:11434
       - DATABASE_URL=postgresql://omniscient:${POSTGRES_PASSWORD:-localdev}@postgres:5432/omniscient
       - EMBEDDING_MODEL=nomic-embed-text
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
         condition: service_healthy
       ollama:
-        condition: service_started
+        condition: service_healthy
     working_dir: /app
-    command: streamlit run web_app.py
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8501/_stcore/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8501/_stcore/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
     volumes:
-      # Mount for knowledge base uploads
+      # Mount for knowledge base uploads (named volume for persistence)
       - knowledge_data:/app/knowledge
+    networks:
+      - omniscient-network
 
 volumes:
   postgres_data:
+    driver: local
   ollama_data:
+    driver: local
   knowledge_data:
+    driver: local
+
+networks:
+  omniscient-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

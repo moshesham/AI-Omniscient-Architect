@@ -1,10 +1,16 @@
 """Question generator for knowledge evaluation."""
 
 import re
-from typing import List, Optional, Callable, Any
+from typing import List, Optional, Callable, Any, Union, TYPE_CHECKING
 from uuid import UUID
 
 from ..models import Document, KnowledgeQuestion
+
+if TYPE_CHECKING:
+    try:
+        from omniscient_llm.base import BaseLLMProvider  # type: ignore
+    except Exception:  # pragma: no cover - optional import for typing only
+        BaseLLMProvider = Any  # type: ignore
 
 
 # Prompt template for question generation
@@ -47,7 +53,7 @@ class QuestionGenerator:
     
     def __init__(
         self,
-        llm_fn: Callable[[str], Any],  # async function returning LLM response string
+        llm_fn: Union[Callable[[str], Any], "BaseLLMProvider"],  # async function or provider
         questions_per_doc: int = 3,
     ):
         """Initialize question generator.
