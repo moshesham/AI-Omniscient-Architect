@@ -1,10 +1,13 @@
 """Question generator for knowledge evaluation."""
 
 import re
+import structlog
 from typing import List, Optional, Callable, Any, Union, TYPE_CHECKING
 from uuid import UUID
 
 from ..models import Document, KnowledgeQuestion
+
+logger = structlog.get_logger(__name__)
 
 if TYPE_CHECKING:
     try:
@@ -93,11 +96,15 @@ class QuestionGenerator:
         )
         
         try:
+            logger.debug(f"Generating questions for document {document.source}")
             response = await self.llm_fn(prompt)
+            logger.debug(f"LLM response length: {len(response) if response else 0}")
             questions = self._parse_questions(response, document.id)
+            logger.debug(f"Parsed {len(questions)} questions")
             return questions[:num_questions]
         except Exception as e:
             # Return empty list on failure
+            logger.warning(f"Question generation failed: {type(e).__name__}: {str(e)}")
             return []
     
     async def generate_batch(

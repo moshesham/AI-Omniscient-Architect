@@ -428,21 +428,18 @@ class OllamaProvider(BaseLLMProvider):
         last_err: Optional[Exception] = None
         for attempt in range(max_retries):
             try:
-                coro = self._client.post(  # type: ignore
+                response = await self._client.post(  # type: ignore
                     "/api/embeddings",
                     json={
                         "model": embed_model,
                         "prompt": text,
-                    }
-                )
-                response = await asyncio.wait_for(
-                    coro,
-                    timeout=timeout or self.config.timeout_seconds,
+                    },
+                    timeout=timeout or self.config.timeout_seconds,  # httpx handles timeout
                 )
                 response.raise_for_status()
                 data = response.json()
                 return data.get("embedding", [])
-            except asyncio.TimeoutError as e:
+            except httpx.TimeoutException as e:
                 last_err = e
                 logger.warning(
                     "Ollama embedding timeout (attempt %s/%s)",

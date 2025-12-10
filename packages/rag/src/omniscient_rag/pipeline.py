@@ -1,6 +1,7 @@
 """RAG Pipeline - Main orchestrator for the RAG system."""
 
 import asyncio
+import structlog
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Callable, AsyncIterator, Union
 from uuid import UUID
@@ -12,6 +13,8 @@ from .chunkers import ChunkerFactory, BaseChunker
 from .store import PostgresVectorStore, DatabaseConfig
 from .search import HybridSearcher, SearchConfig
 from .metrics import KnowledgeScorer, QuestionGenerator, ScoringConfig
+
+logger = structlog.get_logger(__name__)
 
 
 class RAGPipeline(AsyncContextMixin):
@@ -79,6 +82,7 @@ class RAGPipeline(AsyncContextMixin):
         self.question_generator: Optional[QuestionGenerator] = None
         
         if llm_fn:
+            logger.debug(f"Creating QuestionGenerator with llm_fn={llm_fn}")
             self.question_generator = QuestionGenerator(
                 llm_fn=llm_fn,
                 questions_per_doc=self.config.questions_per_document,
@@ -88,6 +92,8 @@ class RAGPipeline(AsyncContextMixin):
                 searcher=self.searcher,
                 llm_fn=llm_fn,
             )
+        else:
+            logger.debug("No llm_fn provided - QuestionGenerator and KnowledgeScorer not created")
     
     @classmethod
     def create(
@@ -127,7 +133,13 @@ class RAGPipeline(AsyncContextMixin):
         if hasattr(embed_fn, "embed"):
             resolved_embed_fn = embed_fn.embed  # type: ignore
         if resolved_llm_fn is None and hasattr(embed_fn, "generate_text"):
-            resolved_llm_fn = embed_fn.generate_text  # type: ignore
+            # Wrap generate_text to accept plain string prompts
+            async def llm_wrapper(prompt: str) -> str:
+                result = await embed_fn.generate_text(prompt)  # type: ignore
+                logger.debug(f"LLM wrapper called, result length: {len(result) if result else 0}")
+                return result
+            resolved_llm_fn = llm_wrapper
+            logger.debug("Auto-wired generate_text from provider as llm_fn")
 
         return cls(store, chunker, resolved_embed_fn, resolved_llm_fn, base_config)
 
@@ -170,9 +182,13 @@ class RAGPipeline(AsyncContextMixin):
         # Generate test questions (on ingestion)
         questions_generated = 0
         if generate_q and self.question_generator:
+            logger.debug(f"Generating questions for document {document.source}, auto_generate={generate_q}")
             questions = await self.question_generator.generate(document)
+            logger.debug(f"Generated {len(questions)} questions")
             await self.store.insert_questions(questions)
             questions_generated = len(questions)
+        else:
+            logger.debug(f"Skipping question generation: generate_q={generate_q}, has_generator={self.question_generator is not None}")
 
         return {
             "document_id": str(document.id),

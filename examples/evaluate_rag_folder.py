@@ -14,14 +14,27 @@ from omniscient_llm import OllamaProvider
 from omniscient_rag import RAGPipeline
 
 async def main():
+    import sys
+    
     db_url = "postgresql://omniscient:localdev@localhost:5432/omniscient"
-    target_path = Path(r"C:\Users\Moshe\PycharmProjects\RAG")
+    
+    # Get target path from command line or prompt user
+    if len(sys.argv) > 1:
+        target_path = Path(sys.argv[1])
+    else:
+        print("Usage: python evaluate_rag_folder.py <target_folder_path>")
+        print("Example: python evaluate_rag_folder.py C:\\Users\\Moshe\\PycharmProjects\\Data-Science-Analytical-Handbook")
+        return
+
+    if not target_path.exists():
+        print(f"Error: Path does not exist: {target_path}")
+        return
 
     print(f"Connecting to DB: {db_url}")
     print(f"Using files from: {target_path}")
 
     # Embedding provider (reuse as generator via generate_text)
-    embed_provider = OllamaProvider(model="nomic-embed-text", timeout=60.0)
+    embed_provider = OllamaProvider(model="nomic-embed-text", timeout=120.0)  # Increased timeout
     await embed_provider.initialize()
 
     # Use the factory to auto-wire embed/generate_text and config overrides
@@ -33,14 +46,23 @@ async def main():
         chunk_size=512,
         chunk_overlap=0.1,
         config_overrides={
-            "embedding_timeout": 30.0,
-            "embedding_max_retries": 2,
+            "embedding_timeout": 120.0,  # Increased for slower Ollama responses
+            "embedding_max_retries": 3,
             "embedding_batch_serial": True,
             "questions_per_document": 2,
         },
     )
 
     await pipeline.initialize()
+
+    # Clear old data to avoid pollution from zero-vector embeddings
+    print("\nClearing old data...")
+    stats_before = await pipeline.store.get_stats()
+    print(f"Before: {stats_before}")
+    deleted = await pipeline.store.clear_all()
+    print(f"Deleted: {deleted}")
+    stats_after = await pipeline.store.get_stats()
+    print(f"After clear: {stats_after}")
 
     # Use heuristic scoring (faster than LLM-based scoring)
     if pipeline.scorer:
