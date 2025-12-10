@@ -11,7 +11,7 @@ for _p in ["core", "agents", "tools", "github", "api", "llm", "rag"]:
         sys.path.insert(0, str(_path))
 
 from omniscient_llm import OllamaProvider
-from omniscient_rag import RAGPipeline, RAGConfig
+from omniscient_rag import RAGPipeline
 
 async def main():
     db_url = "postgresql://omniscient:localdev@localhost:5432/omniscient"

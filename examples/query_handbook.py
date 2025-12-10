@@ -10,8 +10,7 @@ for _p in ["core", "agents", "tools", "github", "api", "llm", "rag"]:
     if _path.exists(): sys.path.insert(0, str(_path))
 
 from omniscient_llm import OllamaProvider
-from omniscient_rag import RAGPipeline, RAGConfig, ChunkerFactory
-from omniscient_rag.store import PostgresVectorStore, DatabaseConfig
+from omniscient_rag import RAGPipeline
 
 async def main():
     db_url = "postgresql://omniscient:localdev@localhost:5432/omniscient"
@@ -23,21 +22,16 @@ async def main():
     provider = OllamaProvider(model="nomic-embed-text") 
     await provider.initialize()
 
-    # Config
-    config = RAGConfig(
+    # Use factory to create pipeline
+    pipeline = RAGPipeline.create(
+        db_url=db_url,
+        embed_fn=provider,
         chunking_strategy="semantic",
         chunk_size=512,
-        embedding_model="nomic-embed-text",
-    )
-
-    store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
-    chunker = ChunkerFactory.create("semantic", 512)
-
-    pipeline = RAGPipeline(
-        store=store,
-        chunker=chunker,
-        embed_fn=provider.embed,
-        config=config
+        config_overrides={
+            "embedding_timeout": 30.0,
+            "embedding_batch_serial": True,
+        },
     )
 
     print("Initializing Pipeline...")
