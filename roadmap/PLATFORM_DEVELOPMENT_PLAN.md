@@ -1,8 +1,8 @@
 # AI-Omniscient-Architect: Platform Development Plan
 
-**Version**: 1.0  
-**Date**: November 28, 2025  
-**Status**: Active Development  
+**Version**: 1.1
+**Date**: December 22, 2025
+**Status**: Active Development - Phase 2 (API & RAG Integration)
 
 ---
 
@@ -23,33 +23,32 @@ Transform AI-Omniscient-Architect into a **production-grade, local-first AI code
 ### Existing Structure
 ```
 omniscient_architect/
-├── agents/           # AI analysis agents (architecture, efficiency, reliability, alignment)
-├── core/             # Core analysis engine
-├── prompts/          # Prompt templates and loaders
-├── tools/            # Complexity, clustering, file scanner
-├── utils/            # Cache, ingestion, logging, IO
-├── analysis.py       # Main AnalysisEngine
-├── cli.py            # Rich CLI interface
-├── web_app.py        # Streamlit web interface
-├── github_client.py  # GitHub API integration
-├── models.py         # Pydantic data models
-├── config.py         # Configuration management
-└── reporting.py      # Report generation
+├── packages/
+│   ├── core/             # Foundation models and config
+│   ├── agents/           # AI analysis agents
+│   ├── tools/            # Analysis utilities
+│   ├── github/           # GitHub integration
+│   ├── api/              # FastAPI server
+│   ├── llm/              # LLM provider abstractions
+│   └── rag/              # RAG pipeline & vector store
+├── examples/             # Usage examples
+├── roadmap/              # Development plans
+└── tests/                # Integration tests
 ```
 
 ### Strengths
-- Modular agent architecture with base class pattern
-- Separation of prompts, tools, and utilities
-- Multiple interfaces (CLI, Web, API-ready)
-- GitHub integration for remote repos
-- Local LLM support via Ollama
+- **Modular Monorepo**: Clean separation of concerns via `packages/` directory
+- **RAG Capabilities**: Advanced RAG pipeline with hybrid search and evaluation
+- **LLM Abstraction**: Provider-agnostic LLM interface (Ollama, etc.)
+- **Multiple Interfaces**: CLI, Web, and API foundations established
+- **Local-First**: Strong support for local LLMs and vector stores
 
 ### Gaps to Address
-- Tight coupling between components
-- No formal API layer
-- Limited plugin/extension system
-- Missing observability and telemetry
-- No package distribution strategy
+- **API Maturity**: API exists but lacks persistence and full feature parity
+- **Plugin System**: Extension mechanism not yet implemented
+- **Observability**: Basic logging present, but metrics/tracing needed
+- **Web UI Integration**: Streamlit app needs to consume new API/packages
+- **Distribution**: CI/CD for publishing packages not yet set up
 
 ---
 
@@ -78,6 +77,8 @@ omniscient_architect/
 ```
 omniscient-architect (meta-package)
 ├── omniscient-core          # Core models, config, base classes
+├── omniscient-llm           # LLM provider abstractions
+├── omniscient-rag           # RAG pipeline, vector store, metrics
 ├── omniscient-agents        # AI analysis agents
 ├── omniscient-tools         # Analysis tools (complexity, clustering)
 ├── omniscient-github        # GitHub integration
@@ -102,19 +103,40 @@ omniscient-architect (meta-package)
 # Size: Minimal, no heavy ML dependencies
 ```
 
-#### 2. `omniscient-agents` (AI Analysis)
+#### 2. `omniscient-llm` (LLM Abstraction)
+```python
+# Responsibilities:
+# - Base LLM provider interface
+# - Ollama implementation
+# - OpenAI/Anthropic implementations (future)
+# - Token counting and cost estimation
+
+# Dependencies: omniscient-core, httpx, pydantic
+```
+
+#### 3. `omniscient-rag` (Knowledge Engine)
+```python
+# Responsibilities:
+# - RAG Pipeline (ingestion, chunking, embedding)
+# - Vector Store (Postgres/pgvector)
+# - Hybrid Search (Semantic + Keyword)
+# - Evaluation Metrics (Precision, Recall, Answer Accuracy)
+
+# Dependencies: omniscient-core, omniscient-llm, psycopg, pgvector, numpy
+```
+
+#### 4. `omniscient-agents` (AI Analysis)
 ```python
 # Responsibilities:
 # - ArchitectureAgent, EfficiencyAgent, ReliabilityAgent, AlignmentAgent
 # - Agent registry and discovery
 # - Prompt templates and loaders
-# - LLM client abstraction (Ollama, OpenAI, Anthropic)
 
-# Dependencies: omniscient-core, langchain-core, langchain-ollama
+# Dependencies: omniscient-core, omniscient-llm, omniscient-rag
 # Extension: Plugin interface for custom agents
 ```
 
-#### 3. `omniscient-tools` (Analysis Utilities)
+#### 5. `omniscient-tools` (Analysis Utilities)
 ```python
 # Responsibilities:
 # - ComplexityAnalyzer (Lizard integration)
@@ -125,7 +147,7 @@ omniscient-architect (meta-package)
 # Dependencies: omniscient-core, lizard, scikit-learn, tree-sitter
 ```
 
-#### 4. `omniscient-github` (GitHub Integration)
+#### 6. `omniscient-github` (GitHub Integration)
 ```python
 # Responsibilities:
 # - GitHubClient (REST API wrapper)
@@ -137,7 +159,7 @@ omniscient-architect (meta-package)
 # Dependencies: omniscient-core, PyGithub, httpx
 ```
 
-#### 5. `omniscient-api` (REST/GraphQL Server)
+#### 7. `omniscient-api` (REST/GraphQL Server)
 ```python
 # Responsibilities:
 # - FastAPI application
@@ -150,7 +172,7 @@ omniscient-architect (meta-package)
 # Dependencies: omniscient-core, omniscient-agents, fastapi, strawberry-graphql
 ```
 
-#### 6. `omniscient-cli` (Command Line)
+#### 8. `omniscient-cli` (Command Line)
 ```python
 # Responsibilities:
 # - Rich terminal UI
@@ -161,7 +183,7 @@ omniscient-architect (meta-package)
 # Dependencies: omniscient-core, omniscient-agents, rich, click
 ```
 
-#### 7. `omniscient-web` (Web Interface)
+#### 9. `omniscient-web` (Web Interface)
 ```python
 # Responsibilities:
 # - Streamlit application
@@ -173,7 +195,7 @@ omniscient-architect (meta-package)
 # Dependencies: omniscient-core, omniscient-api, streamlit, plotly
 ```
 
-#### 8. `omniscient-plugins` (Extension SDK)
+#### 10. `omniscient-plugins` (Extension SDK)
 ```python
 # Responsibilities:
 # - Plugin discovery and loading
@@ -272,39 +294,18 @@ type AgentResult {
 
 ## 🔧 Implementation Phases
 
-### Phase 1: Package Extraction (Weeks 1-2)
+### Phase 1: Package Extraction (Completed)
 **Goal**: Extract core packages without breaking existing functionality
 
-1. **Create monorepo structure**
-   ```
-   packages/
-   ├── core/
-   ├── agents/
-   ├── tools/
-   ├── github/
-   └── api/
-   ```
+- [x] Create monorepo structure
+- [x] Extract `omniscient-core`
+- [x] Extract `omniscient-llm` (New)
+- [x] Extract `omniscient-rag` (New)
+- [x] Extract `omniscient-agents`
+- [x] Extract `omniscient-tools`
+- [x] Update imports across codebase
 
-2. **Extract `omniscient-core`**
-   - Move models.py → packages/core/src/omniscient_core/models.py
-   - Move config.py → packages/core/src/omniscient_core/config.py
-   - Move base agent → packages/core/src/omniscient_core/base.py
-   - Create package pyproject.toml with minimal dependencies
-
-3. **Extract `omniscient-agents`**
-   - Move agents/ → packages/agents/src/omniscient_agents/
-   - Move prompts/ → packages/agents/src/omniscient_agents/prompts/
-   - Depend on omniscient-core
-
-4. **Extract `omniscient-tools`**
-   - Move tools/ → packages/tools/src/omniscient_tools/
-   - Move utils/cache.py → packages/tools/src/omniscient_tools/cache.py
-
-5. **Update imports across codebase**
-   - Create compatibility layer in main package
-   - Ensure CLI and web app still work
-
-### Phase 2: API Layer (Weeks 3-4)
+### Phase 2: API Layer (In Progress)
 **Goal**: Build production-ready REST/GraphQL API
 
 1. **FastAPI application structure**
@@ -329,17 +330,22 @@ type AgentResult {
        └── stream.py       # Analysis streaming
    ```
 
-2. **Authentication system**
+2. **RAG Integration**
+   - Expose ingestion endpoints
+   - Expose semantic search endpoints
+   - Integrate RAG with analysis agents
+
+3. **Authentication system**
    - API key generation and validation
    - GitHub OAuth for web UI
    - Role-based access control
 
-3. **Rate limiting and quotas**
+4. **Rate limiting and quotas**
    - Per-user request limits
    - Analysis job quotas
    - Configurable tiers
 
-4. **WebSocket streaming**
+5. **WebSocket streaming**
    - Real-time analysis progress
    - Agent output streaming
    - Error notifications
@@ -654,12 +660,23 @@ curl -X POST http://localhost:8000/api/v1/analyze \
 
 ## 📝 Next Immediate Actions
 
-1. **Create monorepo structure** with packages/ directory
-2. **Extract omniscient-core** as first standalone package
-3. **Set up CI/CD** for multi-package builds
-4. **Implement FastAPI skeleton** with health endpoint
-5. **Add OpenAPI documentation** generation
-6. **Create plugin SDK** prototype
+1. **API Persistence**:
+   - Replace in-memory `_analyses` dict in `packages/api/src/omniscient_api/routes.py` with a proper database (SQLite/PostgreSQL).
+   - Implement Pydantic models for database schema.
+
+2. **RAG Integration**:
+   - Connect `omniscient-rag` to the API layer.
+   - Create endpoints for document ingestion (`/ingest`).
+   - Create endpoints for semantic search (`/search`).
+
+3. **Plugin SDK**:
+   - Define the `Plugin` abstract base class in `omniscient-core`.
+   - Create a plugin loader mechanism.
+   - Implement a sample plugin (e.g., a custom linter or analysis tool).
+
+4. **Testing**:
+   - Add integration tests for the API endpoints.
+   - Add more unit tests for `omniscient-llm` and `omniscient-rag`.
 
 ---
 
