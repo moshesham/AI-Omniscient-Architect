@@ -10,7 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from omniscient_core.logging import get_logger
 from .config import APIConfig, load_api_config
 from .routes import router as api_router
+from .routes.rag import router as rag_router
 from .models import HealthResponse
+from .database import init_db
 
 logger = get_logger(__name__)
 
@@ -26,12 +28,46 @@ async def lifespan(app: FastAPI):
     
     logger.info("Starting Omniscient API server")
     
-    # Initialize services
-    # TODO: Initialize LLM client, cache, etc.
+    # Initialize database
+    await init_db()
+    
+    # Initialize RAG Pipeline
+    try:
+        from omniscient_rag.pipeline import RAGPipeline
+        from omniscient_llm.providers.ollama import OllamaProvider
+        
+        config: APIConfig = app.state.config
+        
+        # Initialize LLM provider
+        llm_provider = OllamaProvider(
+            base_url=config.get_llm_base_url(),
+            model=config.llm.model,
+        )
+        
+        # Initialize RAG
+        # Use memory:// if no DATABASE_URL provided or if explicitly requested
+        import os
+        db_url = os.getenv("DATABASE_URL", "memory://")
+        
+        pipeline = RAGPipeline.create(
+            db_url=db_url,
+            embed_fn=llm_provider,
+            llm_fn=llm_provider.generate,
+        )
+        await pipeline.initialize()
+        app.state.rag_pipeline = pipeline
+        logger.info(f"RAG Pipeline initialized with {db_url}")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize RAG pipeline: {e}")
+        app.state.rag_pipeline = None
     
     yield
     
     # Cleanup
+    if app.state.rag_pipeline:
+        await app.state.rag_pipeline.close()
+    
     logger.info("Shutting down Omniscient API server")
 
 
@@ -97,6 +133,7 @@ def create_app(config: Optional[APIConfig] = None) -> FastAPI:
     
     # Include API routes
     app.include_router(api_router, prefix=config.api_prefix)
+    app.include_router(rag_router, prefix=config.api_prefix)
     
     logger.info(f"API configured at {config.host}:{config.port}{config.api_prefix}")
     

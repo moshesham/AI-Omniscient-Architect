@@ -15,7 +15,8 @@ if HAS_POSTGRES:
     from psycopg_pool import AsyncConnectionPool
     from pgvector.psycopg import register_vector_async
 
-from ..models import Document, Chunk, KnowledgeQuestion, KnowledgeScore
+from ..models import Document, Chunk, KnowledgeQuestion, KnowledgeScore, RetrievalResult
+from .base import VectorStore
 
 
 def _ensure_uuid(value: Union[str, UUID]) -> UUID:
@@ -51,7 +52,7 @@ class DatabaseConfig:
         )
 
 
-class PostgresVectorStore:
+class PostgresVectorStore(VectorStore):
     """PostgreSQL + pgvector storage backend.
     
     Provides:
@@ -94,22 +95,167 @@ class PostgresVectorStore:
         
         # Create schema and extensions first
         async with self._pool.connection() as conn:
-            await self._create_extensions(conn)
+            await self._create_schema(conn)
         
         # Register pgvector type (must be done after extension is created)
         async with self._pool.connection() as conn:
             await register_vector_async(conn)
-            await self._create_schema(conn)
-    
-    async def _create_extensions(self, conn) -> None:
-        """Create required PostgreSQL extensions."""
-        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    
+            
     async def close(self) -> None:
         """Close connection pool."""
         if self._pool:
             await self._pool.close()
             self._pool = None
+            
+    async def ingest_document(self, document: Document, chunks: List[Chunk]) -> None:
+        """Ingest a document and its chunks."""
+        async with self._pool.connection() as conn:
+            async with conn.cursor() as cur:
+                # Insert document
+                await cur.execute(
+                    f"""
+                    INSERT INTO {self.config.schema}.documents 
+                    (id, path, checksum, language, metadata, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (path) DO UPDATE SET
+                        checksum = EXCLUDED.checksum,
+                        metadata = EXCLUDED.metadata,
+                        updated_at = EXCLUDED.updated_at
+                    RETURNING id
+                    """,
+                    (
+                        document.id,
+                        document.path,
+                        document.checksum,
+                        document.language,
+                        json.dumps(document.metadata),
+                        document.created_at,
+                        document.updated_at,
+                    )
+                )
+                doc_id = (await cur.fetchone())[0]
+                
+                # Delete existing chunks for this document
+                await cur.execute(
+                    f"DELETE FROM {self.config.schema}.chunks WHERE document_id = %s",
+                    (doc_id,)
+                )
+                
+                # Insert new chunks
+                if chunks:
+                    async with cur.copy(
+                        f"""
+                        COPY {self.config.schema}.chunks 
+                        (id, document_id, content, embedding, metadata, created_at) 
+                        FROM STDIN
+                        """
+                    ) as copy:
+                        for chunk in chunks:
+                            await copy.write_row((
+                                chunk.id,
+                                doc_id,
+                                chunk.content,
+                                chunk.embedding,
+                                json.dumps(chunk.metadata),
+                                chunk.created_at,
+                            ))
+                            
+    async def search_vectors(
+        self, 
+        query_embedding: List[float], 
+        top_k: int = 5,
+        min_score: float = 0.0
+    ) -> List[RetrievalResult]:
+        """Search using vector similarity."""
+        async with self._pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    f"""
+                    SELECT 
+                        c.id, c.document_id, c.content, c.metadata,
+                        1 - (c.embedding <=> %s::vector) as score
+                    FROM {self.config.schema}.chunks c
+                    WHERE 1 - (c.embedding <=> %s::vector) > %s
+                    ORDER BY score DESC
+                    LIMIT %s
+                    """,
+                    (query_embedding, query_embedding, min_score, top_k)
+                )
+                results = await cur.fetchall()
+                return [
+                    RetrievalResult(
+                        chunk_id=row["id"],
+                        document_id=row["document_id"],
+                        content=row["content"],
+                        score=row["score"],
+                        metadata=row["metadata"],
+                    )
+                    for row in results
+                ]
+
+    async def search_hybrid(
+        self,
+        query_text: str,
+        query_embedding: List[float],
+        top_k: int = 5,
+        alpha: float = 0.5
+    ) -> List[RetrievalResult]:
+        """Search using hybrid (vector + keyword) strategy."""
+        # Note: This is a simplified implementation. 
+        # Real hybrid search usually involves RRF (Reciprocal Rank Fusion)
+        # or a weighted sum of normalized scores.
+        
+        async with self._pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                # Prepare search query
+                websearch_query = " | ".join(query_text.split())
+                
+                await cur.execute(
+                    f"""
+                    WITH vector_search AS (
+                        SELECT id, 1 - (embedding <=> %s::vector) as vector_score
+                        FROM {self.config.schema}.chunks
+                        ORDER BY vector_score DESC
+                        LIMIT %s * 2
+                    ),
+                    keyword_search AS (
+                        SELECT id, ts_rank_cd(to_tsvector('english', content), to_tsquery('english', %s)) as keyword_score
+                        FROM {self.config.schema}.chunks
+                        WHERE to_tsvector('english', content) @@ to_tsquery('english', %s)
+                        LIMIT %s * 2
+                    )
+                    SELECT 
+                        c.id, c.document_id, c.content, c.metadata,
+                        COALESCE(v.vector_score, 0) * %s + COALESCE(k.keyword_score, 0) * (1 - %s) as score
+                    FROM {self.config.schema}.chunks c
+                    LEFT JOIN vector_search v ON c.id = v.id
+                    LEFT JOIN keyword_search k ON c.id = k.id
+                    WHERE v.id IS NOT NULL OR k.id IS NOT NULL
+                    ORDER BY score DESC
+                    LIMIT %s
+                    """,
+                    (
+                        query_embedding, top_k,
+                        websearch_query, websearch_query, top_k,
+                        alpha, alpha,
+                        top_k
+                    )
+                )
+                results = await cur.fetchall()
+                return [
+                    RetrievalResult(
+                        chunk_id=row["id"],
+                        document_id=row["document_id"],
+                        content=row["content"],
+                        score=row["score"],
+                        metadata=row["metadata"],
+                    )
+                    for row in results
+                ]
+    
+    async def _create_extensions(self, conn) -> None:
+        """Create required PostgreSQL extensions."""
+        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
     
     async def _create_schema(self, conn) -> None:
         """Create database schema if not exists."""
