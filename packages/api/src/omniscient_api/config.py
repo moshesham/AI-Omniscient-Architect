@@ -55,6 +55,7 @@ class APIConfig(BaseSettings):
     port: int = Field(default=8000, alias="OMNISCIENT_API_PORT")
     workers: int = Field(default=1, alias="OMNISCIENT_API_WORKERS")
     debug: bool = Field(default=False, alias="OMNISCIENT_DEBUG")
+    api_key: Optional[str] = Field(default=None, description="API Key for authentication")
     
     # API settings
     api_prefix: str = "/api/v1"
@@ -76,8 +77,8 @@ class APIConfig(BaseSettings):
     
     model_config = SettingsConfigDict(
         env_prefix="OMNISCIENT_",
-        env_file=".env",
-        extra="ignore",
+        env_nested_delimiter="__",
+        case_sensitive=False
     )
     
     def get_llm_base_url(self) -> str:
@@ -132,3 +133,11 @@ def load_api_config(config_path: Optional[str] = None) -> APIConfig:
                     config.llm.model = llm["model"]
     
     return config
+
+
+from functools import lru_cache
+
+@lru_cache()
+def get_config() -> APIConfig:
+    """Get cached API configuration."""
+    return load_api_config()

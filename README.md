@@ -163,6 +163,35 @@ python -m omniscient_llm pull codellama:7b-instruct
 python -m omniscient_llm recommend --category code
 ```
 
+### API Server
+
+Start the REST API server:
+
+```bash
+# Ensure packages are in PYTHONPATH
+export PYTHONPATH=$PYTHONPATH:packages/api/src:packages/core/src:packages/rag/src:packages/llm/src
+
+# Run the server
+python -m omniscient_api.cli serve
+```
+
+The API will be available at `http://localhost:8000`.
+Documentation is available at `http://localhost:8000/docs`.
+
+#### Authentication
+
+The API is protected by an API Key. Set the `OMNISCIENT_API_KEY` environment variable to enable authentication.
+
+```bash
+export OMNISCIENT_API_KEY="your-secret-key"
+```
+
+Pass the key in the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: your-secret-key" http://localhost:8000/api/v1/analyze ...
+```
+
 ---
 
 ## 🐳 Docker Deployment

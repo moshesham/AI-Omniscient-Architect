@@ -4,10 +4,12 @@ from typing import List, Optional
 from datetime import datetime
 import uuid
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, BackgroundTasks
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, BackgroundTasks, Depends
+from sqlmodel import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from omniscient_core.logging import get_logger
-from .models import (
+from ..models import (
     AnalysisRequest,
     AnalysisResponse,
     AnalysisStatus,
@@ -20,13 +22,13 @@ from .models import (
     Severity,
     FindingCategory,
 )
+from ..db_models import Analysis, FindingModel
+from ..database import get_session
+from ..auth import verify_api_key
 
 logger = get_logger(__name__)
 
-router = APIRouter(tags=["Analysis"])
-
-# In-memory storage for demo (replace with proper storage)
-_analyses: dict = {}
+router = APIRouter(tags=["Analysis"], dependencies=[Depends(verify_api_key)])
 
 
 @router.post(
@@ -42,6 +44,7 @@ _analyses: dict = {}
 async def analyze_repository(
     request: AnalysisRequest,
     background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_session),
 ) -> AnalysisResponse:
     """Analyze a GitHub repository.
     
@@ -50,17 +53,17 @@ async def analyze_repository(
     """
     analysis_id = str(uuid.uuid4())
     
-    # Create initial response
-    response = AnalysisResponse(
-        analysis_id=analysis_id,
+    # Create DB record
+    db_analysis = Analysis(
+        id=analysis_id,
         status=AnalysisStatus.PENDING,
         repository_url=request.repository_url,
         branch=request.config.branch if request.config else None,
         created_at=datetime.utcnow(),
     )
-    
-    # Store analysis
-    _analyses[analysis_id] = response
+    session.add(db_analysis)
+    await session.commit()
+    await session.refresh(db_analysis)
     
     # Schedule background analysis
     background_tasks.add_task(
@@ -71,7 +74,13 @@ async def analyze_repository(
     
     logger.info(f"Analysis {analysis_id} queued for {request.repository_url}")
     
-    return response
+    return AnalysisResponse(
+        analysis_id=db_analysis.id,
+        status=db_analysis.status,
+        repository_url=db_analysis.repository_url,
+        branch=db_analysis.branch,
+        created_at=db_analysis.created_at,
+    )
 
 
 async def _run_analysis(analysis_id: str, request: AnalysisRequest):
@@ -79,55 +88,70 @@ async def _run_analysis(analysis_id: str, request: AnalysisRequest):
     
     TODO: Implement full analysis pipeline integration.
     """
-    try:
-        analysis = _analyses.get(analysis_id)
-        if not analysis:
-            return
-        
-        # Update status
-        analysis.status = AnalysisStatus.RUNNING
-        analysis.started_at = datetime.utcnow()
-        
-        # TODO: Integrate with actual analysis pipeline
-        # For now, simulate with placeholder results
-        import asyncio
-        await asyncio.sleep(2)  # Simulate processing
-        
-        # Mock findings for demonstration
-        analysis.findings = [
-            Finding(
-                agent_name="architecture",
-                severity=Severity.MEDIUM,
-                category=FindingCategory.ARCHITECTURE,
-                title="Consider extracting common utilities",
-                description="Several modules contain similar helper functions that could be consolidated.",
-                suggestions=["Create a shared utils module", "Apply DRY principles"],
-            ),
-        ]
-        
-        analysis.summary = AnalysisSummary(
-            total_findings=len(analysis.findings),
-            total_files=10,  # Placeholder
-            findings_by_severity={"medium": 1},
-            overall_score=85.0,
-        )
-        
-        analysis.metrics = AnalysisMetrics(
-            files_analyzed=10,
-            analysis_time_seconds=2.0,
-            agents_used=request.agents or ["architecture", "reliability"],
-        )
-        
-        analysis.status = AnalysisStatus.COMPLETED
-        analysis.completed_at = datetime.utcnow()
-        
-        logger.info(f"Analysis {analysis_id} completed")
-        
-    except Exception as e:
-        logger.error(f"Analysis {analysis_id} failed: {e}")
-        if analysis_id in _analyses:
-            _analyses[analysis_id].status = AnalysisStatus.FAILED
-            _analyses[analysis_id].error = str(e)
+    # Manually get session since we are in background task
+    from .database import get_session
+    async for session in get_session():
+        try:
+            result = await session.execute(select(Analysis).where(Analysis.id == analysis_id))
+            analysis = result.scalar_one_or_none()
+            
+            if not analysis:
+                return
+            
+            # Update status
+            analysis.status = AnalysisStatus.RUNNING
+            analysis.started_at = datetime.utcnow()
+            await session.commit()
+            
+            # TODO: Integrate with actual analysis pipeline
+            # For now, simulate with placeholder results
+            import asyncio
+            await asyncio.sleep(2)  # Simulate processing
+            
+            # Mock findings for demonstration
+            findings = [
+                FindingModel(
+                    analysis_id=analysis_id,
+                    agent_name="architecture",
+                    severity=Severity.MEDIUM,
+                    category=FindingCategory.ARCHITECTURE,
+                    title="Consider extracting common utilities",
+                    description="Several modules contain similar helper functions that could be consolidated.",
+                    suggestions=["Create a shared utils module", "Apply DRY principles"],
+                ),
+            ]
+            
+            for f in findings:
+                session.add(f)
+            
+            analysis.summary = {
+                "total_findings": len(findings),
+                "total_files": 10,  # Placeholder
+                "findings_by_severity": {"medium": 1},
+                "overall_score": 85.0,
+            }
+            
+            analysis.metrics = {
+                "files_analyzed": 10,
+                "analysis_time_seconds": 2.0,
+                "agents_used": request.agents or ["architecture", "reliability"],
+            }
+            
+            analysis.status = AnalysisStatus.COMPLETED
+            analysis.completed_at = datetime.utcnow()
+            
+            await session.commit()
+            logger.info(f"Analysis {analysis_id} completed")
+            
+        except Exception as e:
+            logger.error(f"Analysis {analysis_id} failed: {e}")
+            try:
+                analysis.status = AnalysisStatus.FAILED
+                analysis.error = str(e)
+                await session.commit()
+            except:
+                pass
+        break
 
 
 @router.get(
@@ -136,12 +160,22 @@ async def _run_analysis(analysis_id: str, request: AnalysisRequest):
     responses={404: {"model": ErrorResponse}},
     summary="Get analysis status and results",
 )
-async def get_analysis(analysis_id: str) -> AnalysisResponse:
+async def get_analysis(
+    analysis_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> AnalysisResponse:
     """Get analysis by ID.
     
     Returns current status and results (if completed).
     """
-    analysis = _analyses.get(analysis_id)
+    from sqlalchemy.orm import selectinload
+    result = await session.execute(
+        select(Analysis)
+        .where(Analysis.id == analysis_id)
+        .options(selectinload(Analysis.findings))
+    )
+    analysis = result.scalar_one_or_none()
+    
     if not analysis:
         raise HTTPException(
             status_code=404,
@@ -158,6 +192,7 @@ async def get_analysis(analysis_id: str) -> AnalysisResponse:
 async def list_analyses(
     limit: int = 10,
     status: Optional[AnalysisStatus] = None,
+    session: AsyncSession = Depends(get_session),
 ) -> List[AnalysisResponse]:
     """List recent analyses.
     
@@ -165,36 +200,42 @@ async def list_analyses(
         limit: Maximum number of results
         status: Filter by status
     """
-    analyses = list(_analyses.values())
+    query = select(Analysis).order_by(Analysis.created_at.desc()).limit(limit)
     
     if status:
-        analyses = [a for a in analyses if a.status == status]
+        query = query.where(Analysis.status == status)
     
-    # Sort by created_at descending
-    analyses.sort(key=lambda a: a.created_at, reverse=True)
+    result = await session.execute(query)
+    analyses = result.scalars().all()
     
-    return analyses[:limit]
+    return analyses
 
 
 @router.delete(
     "/analysis/{analysis_id}",
     summary="Cancel or delete an analysis",
 )
-async def delete_analysis(analysis_id: str) -> dict:
+async def delete_analysis(
+    analysis_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     """Cancel or delete an analysis."""
-    if analysis_id not in _analyses:
+    result = await session.execute(select(Analysis).where(Analysis.id == analysis_id))
+    analysis = result.scalar_one_or_none()
+    
+    if not analysis:
         raise HTTPException(
             status_code=404,
             detail=f"Analysis {analysis_id} not found"
         )
     
-    analysis = _analyses[analysis_id]
-    
     if analysis.status in [AnalysisStatus.PENDING, AnalysisStatus.RUNNING]:
         analysis.status = AnalysisStatus.CANCELLED
+        await session.commit()
         return {"message": f"Analysis {analysis_id} cancelled"}
     else:
-        del _analyses[analysis_id]
+        await session.delete(analysis)
+        await session.commit()
         return {"message": f"Analysis {analysis_id} deleted"}
 
 
@@ -208,6 +249,7 @@ async def analyze_files(
     agents: Optional[str] = Form(None),
     project_name: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = None,
+    session: AsyncSession = Depends(get_session),
 ) -> AnalysisResponse:
     """Analyze uploaded files directly.
     
@@ -222,20 +264,27 @@ async def analyze_files(
         content = await file.read()
         file_contents[file.filename] = content.decode("utf-8", errors="ignore")
     
-    response = AnalysisResponse(
-        analysis_id=analysis_id,
+    # Create DB record
+    db_analysis = Analysis(
+        id=analysis_id,
         status=AnalysisStatus.PENDING,
         repository_url=f"upload://{project_name or 'files'}",
         created_at=datetime.utcnow(),
     )
-    
-    _analyses[analysis_id] = response
+    session.add(db_analysis)
+    await session.commit()
+    await session.refresh(db_analysis)
     
     logger.info(f"File analysis {analysis_id} queued with {len(files)} files")
     
     # TODO: Schedule background analysis with file_contents
     
-    return response
+    return AnalysisResponse(
+        analysis_id=db_analysis.id,
+        status=db_analysis.status,
+        repository_url=db_analysis.repository_url,
+        created_at=db_analysis.created_at,
+    )
 
 
 @router.get(
@@ -295,17 +344,25 @@ async def get_agent(agent_name: str) -> AgentInfo:
     "/stats",
     summary="Get API statistics",
 )
-async def get_stats() -> dict:
+async def get_stats(
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     """Get API usage statistics."""
-    analyses = list(_analyses.values())
+    from sqlalchemy import func
     
-    status_counts = {}
-    for analysis in analyses:
-        status = analysis.status.value
-        status_counts[status] = status_counts.get(status, 0) + 1
+    # Count total
+    result = await session.execute(select(func.count(Analysis.id)))
+    total = result.scalar()
+    
+    # Count by status
+    result = await session.execute(
+        select(Analysis.status, func.count(Analysis.id))
+        .group_by(Analysis.status)
+    )
+    status_counts = {status.value: count for status, count in result.all()}
     
     return {
-        "total_analyses": len(analyses),
+        "total_analyses": total,
         "by_status": status_counts,
         "agents_available": 4,
     }

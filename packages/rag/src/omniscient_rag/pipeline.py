@@ -10,7 +10,8 @@ from omniscient_core import AsyncContextMixin
 
 from .models import Document, Chunk, RAGConfig, RetrievalResult, KnowledgeScore
 from .chunkers import ChunkerFactory, BaseChunker
-from .store import PostgresVectorStore, DatabaseConfig
+from .store import PostgresVectorStore, DatabaseConfig, VectorStore
+from .store.memory import InMemoryVectorStore
 from .search import HybridSearcher, SearchConfig
 from .metrics import KnowledgeScorer, QuestionGenerator, ScoringConfig
 
@@ -23,7 +24,7 @@ class RAGPipeline(AsyncContextMixin):
     Coordinates all RAG components:
     - Document ingestion with configurable chunking
     - Embedding generation via Ollama
-    - Storage in PostgreSQL + pgvector
+    - Storage in PostgreSQL + pgvector (or in-memory)
     - Hybrid search (vector + BM25)
     - Knowledge metrics tracking
     
@@ -47,7 +48,7 @@ class RAGPipeline(AsyncContextMixin):
     
     def __init__(
         self,
-        store: PostgresVectorStore,
+        store: VectorStore,
         chunker: BaseChunker,
         embed_fn: Callable[[str], Any],
         llm_fn: Optional[Callable[[str], Any]] = None,
@@ -56,7 +57,7 @@ class RAGPipeline(AsyncContextMixin):
         """Initialize RAG pipeline.
         
         Args:
-            store: PostgreSQL vector store
+            store: Vector store implementation
             chunker: Document chunker
             embed_fn: Async function for generating embeddings
             llm_fn: Optional LLM function for question generation
@@ -125,7 +126,11 @@ class RAGPipeline(AsyncContextMixin):
                 if hasattr(base_config, k):
                     setattr(base_config, k, v)
 
-        store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
+        if db_url.startswith("memory://"):
+            store = InMemoryVectorStore()
+        else:
+            store = PostgresVectorStore(DatabaseConfig(connection_string=db_url))
+            
         chunker = ChunkerFactory.create(chunking_strategy, chunk_size, chunk_overlap)
 
         resolved_embed_fn = embed_fn
