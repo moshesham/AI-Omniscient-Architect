@@ -58,7 +58,6 @@ COPY --from=builder /install /install
 COPY web_app.py ./
 COPY config.yaml ./
 COPY packages/ ./packages/
-COPY src/ ./src/
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash --uid 1000 app \

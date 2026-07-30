@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python 3.9+">
+  <img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License">
   <img src="https://img.shields.io/badge/LLM-Ollama-orange.svg" alt="Ollama">
   <img src="https://img.shields.io/badge/UI-Streamlit-red.svg" alt="Streamlit">
@@ -26,7 +26,7 @@
 | 🤖 **Multi-Provider LLM** | Support for Ollama, OpenAI, and Anthropic with automatic fallback |
 | 📊 **Smart Analysis** | Security vulnerabilities, architecture patterns, code quality, best practices |
 | 🌐 **Web UI** | Beautiful Streamlit interface for interactive analysis |
-| 📦 **Modular Architecture** | Six independent packages for flexibility and extensibility |
+| 📦 **Modular Architecture** | Seven independent packages for flexibility and extensibility |
 | ⚡ **Parallel Execution** | Concurrent agent analysis with progress streaming |
 | 🐙 **GitHub Integration** | Analyze repositories directly from GitHub URLs |
 
@@ -36,7 +36,7 @@
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.10+
 - [Ollama](https://ollama.ai) installed and running
 
 ### Installation
@@ -51,8 +51,9 @@ python -m venv .venv
 .venv\Scripts\activate  # Windows
 # source .venv/bin/activate  # Linux/Mac
 
-# Install dependencies
+# Install runtime and workspace packages
 pip install -r requirements.txt
+pip install -e packages/core -e packages/llm -e packages/tools -e packages/github -e packages/agents -e packages/api -e packages/rag
 
 # Pull a code-focused model
 ollama pull qwen2.5-coder:1.5b
@@ -66,6 +67,12 @@ streamlit run web_app.py
 
 Open http://localhost:8501 in your browser.
 
+### Python Package Releases
+
+- `pyproject.toml` at the repository root defines the published meta-package `omniscient-architect`.
+- Each installable component under `/packages/*` is published as its own wheel/sdist.
+- Release instructions, tag naming, publishing, and rollback steps live in [RELEASE.md](RELEASE.md).
+
 ---
 
 ## 📦 Package Architecture
@@ -77,7 +84,8 @@ packages/
 ├── omniscient-agents   # AI analysis agents with orchestration
 ├── omniscient-tools    # Code complexity, clustering, file scanning
 ├── omniscient-github   # GitHub API client with rate limiting
-└── omniscient-api      # FastAPI REST/GraphQL server
+├── omniscient-api      # FastAPI REST/GraphQL server
+└── omniscient-rag      # Retrieval, vector storage, and learning pipeline
 ```
 
 ### Package Overview
@@ -90,6 +98,7 @@ packages/
 | `omniscient-tools` | Utilities | `ComplexityAnalyzer`, `FileScanner`, `Clustering` |
 | `omniscient-github` | GitHub | `GitHubClient`, `RateLimitHandler` |
 | `omniscient-api` | API Server | FastAPI routes, GraphQL schema |
+| `omniscient-rag` | Retrieval | `RAGPipeline`, `HybridSearcher`, `KnowledgeScorer` |
 
 ---
 
@@ -275,20 +284,18 @@ AI-Omniscient-Architect/
 ├── examples/            # Usage examples
 ├── Dockerfile           # Container definition
 ├── docker-compose.yml   # Production compose
-└── requirements.txt     # Dependencies
+├── requirements.txt     # Streamlit app runtime dependency bootstrap
+└── requirements-dev.txt # CI/build/test tooling
 ```
 
 ### Running Tests
 
 ```bash
-# Test all packages
-python scripts/test_packages.py
+# Install developer tooling
+pip install -r requirements-dev.txt
 
-# Test local analysis
-python scripts/test_local_analysis.py
-
-# Test with a specific repo
-python scripts/test_datalake_analysis.py
+# Run the test suite
+pytest -q
 ```
 
 ### Recommended Models
@@ -306,6 +313,8 @@ python scripts/test_datalake_analysis.py
 - [Development Roadmap](roadmap/PHASE_2_3_PROGRESS.md) - Current progress and future plans
 - [Package Documentation](packages/README.md) - Detailed package docs
 - [API Reference](packages/api/README.md) - REST/GraphQL API docs
+- [Release Guide](RELEASE.md) - Packaging, PyPI publishing, and rollback workflow
+- [Changelog](CHANGELOG.md) - Release notes by version
 
 ---
 

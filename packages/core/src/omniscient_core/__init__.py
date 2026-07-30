@@ -21,7 +21,7 @@ from .base import BaseAIAgent, AgentResponse
 from .mixins import AsyncContextMixin
 from .optional_imports import optional_import, require_optional
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     # Models

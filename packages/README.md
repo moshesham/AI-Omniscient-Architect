@@ -7,17 +7,21 @@ This directory contains the modular packages that make up the Omniscient Archite
 | Package | Description | Key Features |
 |---------|-------------|--------------|
 | `omniscient-core` | Core models, configuration, and base classes | FileAnalysis, RepositoryInfo, BaseAIAgent |
+| `omniscient-llm` | Provider abstraction layer | Ollama, OpenAI, Anthropic integrations |
 | `omniscient-agents` | AI analysis agents with prompts | ArchitectureAgent, ReliabilityAgent, etc. |
 | `omniscient-tools` | Analysis utilities and tools | ComplexityAnalyzer, AnalysisCache, FileScanner |
 | `omniscient-github` | GitHub integration | GitHubClient, RepositoryScanner, PRManager |
 | `omniscient-api` | REST/GraphQL API server | FastAPI endpoints, async analysis |
+| `omniscient-rag` | Retrieval pipeline | Vector store, hybrid search, learning features |
 
 ## Installation
 
-### Full Platform
+### Published Meta-Package
 ```bash
 pip install omniscient-architect
 ```
+
+The root package is a meta-package that installs the published sub-packages from PyPI. It does not ship its own runtime source tree.
 
 ### Individual Packages
 ```bash
@@ -42,25 +46,29 @@ pip install omniscient-api[graphql]
 From the repository root:
 
 ```bash
-# Install all packages in development mode
+# Install app/runtime dependency bootstrap
+pip install -r requirements-dev.txt
+
+# Install workspace packages in dependency order
 pip install -e packages/core
-pip install -e packages/agents
+pip install -e packages/llm
 pip install -e packages/tools
 pip install -e packages/github
+pip install -e packages/agents
 pip install -e packages/api
-
-# Or use the convenience script
-python scripts/install_dev.py
+pip install -e packages/rag
 ```
 
 ## Package Dependencies
 
 ```
-omniscient-core (no dependencies)
-    ├── omniscient-agents (depends on core)
-    ├── omniscient-tools (depends on core)
-    ├── omniscient-github (depends on core)
-    └── omniscient-api (depends on all above)
+omniscient-core
+    ├── omniscient-llm
+    ├── omniscient-tools
+    ├── omniscient-github
+    ├── omniscient-agents (depends on core, optional llm extras)
+    ├── omniscient-rag (depends on core + llm)
+    └── omniscient-api (depends on core + agents + tools + github)
 ```
 
 ## Package Structure
@@ -95,29 +103,25 @@ pytest packages/agents/tests/
 ### Building Packages
 
 ```bash
-# Build all packages
-python scripts/build_packages.py
-
-# Build specific package
-cd packages/core
+# Build the meta-package
 python -m build
+
+# Build all sub-packages
+for pkg in core llm tools github agents api rag; do
+  python -m build "packages/$pkg"
+done
 ```
 
 ### Publishing
 
 ```bash
-# Publish to PyPI (requires credentials)
-python scripts/publish_packages.py
+# Dry-run or tag-based publishing is handled by .github/workflows/publish.yml
+# See RELEASE.md for the supported tags and release order.
 ```
 
 ## Migration Guide
 
 If you're migrating from the monolithic structure:
-
-### Before (deprecated)
-```python
-from omniscient_architect import FileAnalysis, ArchitectureAgent, GitHubClient
-```
 
 ### After (recommended)
 ```python
@@ -126,14 +130,11 @@ from omniscient_agents import ArchitectureAgent
 from omniscient_github import GitHubClient
 ```
 
-The old imports will continue to work but will emit deprecation warnings.
-
 ## Version Compatibility
 
-All packages are versioned together and should be compatible with each other
-when using the same minor version:
+All packages are released on the same minor version line and should be used together within the same minor version:
 
-- `omniscient-core==0.1.x` compatible with `omniscient-agents==0.1.x`
+- `omniscient-core==0.2.x` compatible with `omniscient-agents==0.2.x`
 - Cross-minor version compatibility is not guaranteed
 
 ## Contributing

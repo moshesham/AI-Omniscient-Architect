@@ -1,5 +1,7 @@
 # 🎉 Deployment and Next Steps
 
+> This guide covers application deployment with Docker/Compose. Python package publishing and release automation are documented separately in [RELEASE.md](RELEASE.md).
+
 ## ✅ What Was Completed
 
 All requested improvements have been successfully implemented:
