@@ -172,6 +172,7 @@ def _register_builtin_agents():
     from .efficiency import EfficiencyAgent
     from .reliability import ReliabilityAgent
     from .alignment import AlignmentAgent
+    from .security import SecurityAgent
     
     register_agent(
         "architecture",
@@ -200,6 +201,13 @@ def _register_builtin_agents():
         "Verifies alignment between code, docs, and requirements",
         "quality",
         priority=3
+    )
+    register_agent(
+        "security",
+        SecurityAgent,
+        "Detects security vulnerabilities, OWASP Top-10 issues, and hardcoded secrets",
+        "security",
+        priority=9
     )
 
 

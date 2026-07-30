@@ -14,6 +14,8 @@ from omniscient_core import (
 )
 from omniscient_core.logging import get_logger
 
+from .workspace import AgentWorkspace
+
 logger = get_logger(__name__)
 
 
@@ -148,6 +150,7 @@ class AnalysisOrchestrator:
         max_concurrent: int = 3,
         retry_failed: bool = True,
         max_retries: int = 2,
+        workspace: Optional[AgentWorkspace] = None,
     ):
         """Initialize orchestrator.
         
@@ -156,11 +159,15 @@ class AnalysisOrchestrator:
             max_concurrent: Maximum concurrent analyses
             retry_failed: Whether to retry failed analyses
             max_retries: Maximum retry attempts per agent
+            workspace: Optional AgentWorkspace for inter-agent communication
+                and persistent change tracking.  When provided, each agent's
+                result is written to the workspace after it completes.
         """
         self.agents = agents
         self.max_concurrent = max_concurrent
         self.retry_failed = retry_failed
         self.max_retries = max_retries
+        self.workspace = workspace
         
         self._tasks: Dict[str, AnalysisTask] = {}
         self._result: Optional[AnalysisResult] = None
@@ -211,6 +218,30 @@ class AnalysisOrchestrator:
                 f"Completed analysis: {task.agent_name} "
                 f"({len(result.issues)} issues found)"
             )
+
+            # Persist findings to workspace for cross-agent coordination
+            if self.workspace is not None:
+                try:
+                    self.workspace.write_entry(
+                        agent_name=task.agent_name,
+                        data={
+                            "findings": list(result.findings),
+                            "recommendations": list(result.recommendations),
+                            "confidence": result.confidence,
+                            "reasoning": result.reasoning,
+                            "issues_count": len(result.issues),
+                        },
+                        entry_type="findings",
+                        metadata={
+                            "duration_seconds": task.duration_seconds,
+                            "repository": repo_info.name or "",
+                            "branch": repo_info.branch,
+                        },
+                    )
+                except Exception as ws_err:
+                    logger.warning(
+                        f"Failed to write workspace entry for {task.agent_name}: {ws_err}"
+                    )
             
         except Exception as e:
             logger.error(f"Analysis failed: {task.agent_name} - {e}")
@@ -281,6 +312,18 @@ class AnalysisOrchestrator:
                 self._result.errors[name] = task.error or "Unknown error"
         
         self._result.completed_at = datetime.now()
+
+        # Write aggregated session summary to workspace shared area
+        if self.workspace is not None:
+            try:
+                self.workspace.write_shared(
+                    key="session_summary",
+                    data=self._result.get_summary(),
+                    author="orchestrator",
+                )
+            except Exception as ws_err:
+                logger.warning(f"Failed to write workspace session summary: {ws_err}")
+
         return self._result
     
     async def analyze_with_progress(

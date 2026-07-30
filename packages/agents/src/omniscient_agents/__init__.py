@@ -5,6 +5,7 @@ from .architecture import ArchitectureAgent
 from .efficiency import EfficiencyAgent
 from .reliability import ReliabilityAgent
 from .alignment import AlignmentAgent
+from .security import SecurityAgent
 from .registry import AgentRegistry, get_agent, list_agents, register_agent
 from .orchestrator import (
     AnalysisOrchestrator,
@@ -14,6 +15,7 @@ from .orchestrator import (
     AnalysisTask,
 )
 from .llm_agent import LLMAgent, CodeReviewAgent, LLMAgentResponse, Issue
+from .workspace import AgentWorkspace, WorkspaceEntry, SessionManifest
 
 __version__ = "0.1.0"
 
@@ -23,6 +25,7 @@ __all__ = [
     "EfficiencyAgent",
     "ReliabilityAgent",
     "AlignmentAgent",
+    "SecurityAgent",
     # LLM Agents
     "LLMAgent",
     "CodeReviewAgent",
@@ -40,4 +43,8 @@ __all__ = [
     "AnalysisProgress",
     "AnalysisStatus",
     "AnalysisTask",
+    # Workspace
+    "AgentWorkspace",
+    "WorkspaceEntry",
+    "SessionManifest",
 ]
