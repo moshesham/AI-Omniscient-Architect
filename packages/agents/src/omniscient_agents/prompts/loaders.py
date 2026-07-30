@@ -7,6 +7,7 @@ from .templates import (
     EFFICIENCY_PROMPT,
     RELIABILITY_PROMPT,
     ALIGNMENT_PROMPT,
+    SECURITY_PROMPT,
 )
 
 # Registry of prompts
@@ -15,6 +16,7 @@ _PROMPTS: Dict[str, str] = {
     "efficiency": EFFICIENCY_PROMPT,
     "reliability": RELIABILITY_PROMPT,
     "alignment": ALIGNMENT_PROMPT,
+    "security": SECURITY_PROMPT,
 }
 
 # Custom prompts added at runtime

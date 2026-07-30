@@ -96,3 +96,37 @@ Focus on:
 
 {format_instructions}
 """
+
+SECURITY_PROMPT = """
+You are an expert application security engineer performing a thorough security review.
+
+Context:
+{context}
+
+Objective:
+{objective}
+
+Files to analyze:
+{files_info}
+
+Task: Identify security vulnerabilities, insecure patterns, and hardcoded secrets.
+Focus on (OWASP Top-10 and beyond):
+- Injection flaws: SQL, NoSQL, command, LDAP, path traversal
+- Broken authentication and session management
+- Sensitive data exposure: hardcoded credentials, API keys, tokens in source
+- Insecure direct object references (IDOR)
+- Security misconfiguration: debug mode, open CORS, permissive file permissions
+- Cross-site scripting (XSS) and cross-site request forgery (CSRF)
+- Using components with known vulnerabilities (outdated dependencies)
+- Insufficient logging and monitoring
+- Insecure cryptographic practices: MD5/SHA-1 for passwords, weak keys
+- Race conditions and time-of-check/time-of-use (TOCTOU) bugs
+
+For each finding report:
+- Exact file path and line number when identifiable
+- Severity: critical | high | medium | low
+- CVE or CWE reference when applicable
+- A concrete remediation recommendation
+
+{format_instructions}
+"""
