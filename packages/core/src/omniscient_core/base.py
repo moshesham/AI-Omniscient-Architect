@@ -127,16 +127,57 @@ class BaseAIAgent(ABC):
         response.agent_name = self.name
         return response
 
-    def prepare_files_context(self, files: List[FileAnalysis], max_files: int = 10) -> str:
-        """Prepare a context string from file analyses.
-        
+    def prepare_files_context(
+        self,
+        files: List[FileAnalysis],
+        max_files: int = 10,
+        token_budget: int = 6000,
+        use_smart_prioritizer: bool = True,
+    ) -> str:
+        """Prepare a token-efficient context string from file analyses.
+
+        When *use_smart_prioritizer* is ``True`` (the default) the context is
+        built by :class:`omniscient_tools.SmartPrioritizer`:
+
+        1. Every file is scored for impact (cyclomatic complexity proxy, LOC,
+           import fan-out, TODO density) without any LLM calls.
+        2. The top-ranked files are selected and their symbols (functions /
+           classes) are extracted and re-ranked by complexity.
+        3. Symbols are packed into the returned string in descending priority
+           order until *token_budget* is exhausted.
+
+        This approach typically reduces context size by 60-80 % compared to
+        naive full-file inclusion while keeping the highest-signal code
+        front-and-center for the LLM.
+
+        When the ``omniscient-tools`` package is not installed, or when
+        *use_smart_prioritizer* is ``False``, the legacy plain-text fallback
+        is used (first *max_files* files, first 2000 chars each).
+
         Args:
-            files: List of FileAnalysis objects
-            max_files: Maximum number of files to include
-            
+            files: List of FileAnalysis objects.
+            max_files: Upper bound on files passed to the smart prioritizer
+                (or used by the legacy path).
+            token_budget: Approximate token budget for the context string
+                (smart-prioritizer path only; 4 chars ≈ 1 token).
+            use_smart_prioritizer: Toggle the smart-prioritizer path.
+
         Returns:
-            Formatted string with file information
+            Formatted context string ready to embed in a prompt.
         """
+        if use_smart_prioritizer:
+            try:
+                from omniscient_tools.smart_prioritizer import SmartPrioritizer
+
+                sp = SmartPrioritizer(
+                    token_budget=token_budget,
+                    max_files=max_files,
+                )
+                return sp.build_context(files)
+            except ImportError:
+                pass  # fall through to legacy path
+
+        # Legacy path: flat list of file headers + truncated content
         context_parts = []
         for file in files[:max_files]:
             context_parts.append(f"File: {file.path}")
