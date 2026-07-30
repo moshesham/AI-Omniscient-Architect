@@ -4,35 +4,36 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omniscient-agents"
-version = "0.1.0"
+version = "0.2.0"
 description = "AI analysis agents for Omniscient Architect"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
-    {name = "AI Omniscient Architect Team", email = "ai-team@example.com"},
+    {name = "AI Omniscient Architect Team"},
 ]
 keywords = ["code-analysis", "ai", "agents", "llm"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "omniscient-core>=0.1.0",
+    "omniscient-core>=0.2.0,<0.3.0",
     "langchain-core>=0.1.0",
     "langchain-ollama>=0.2.0",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "build>=1.2.0",
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
     "mypy>=1.7.0",
+    "twine>=5.1.0",
 ]
 openai = [
     "langchain-openai>=0.1.0",
@@ -41,11 +42,17 @@ anthropic = [
     "langchain-anthropic>=0.1.0",
 ]
 llm = [
-    "omniscient-llm>=0.1.0",
+    "omniscient-llm>=0.2.0,<0.3.0",
 ]
 all = [
     "omniscient-agents[openai,anthropic,llm]",
 ]
+
+[project.urls]
+Homepage = "https://github.com/moshesham/AI-Omniscient-Architect"
+Documentation = "https://github.com/moshesham/AI-Omniscient-Architect/tree/main/packages/agents"
+Repository = "https://github.com/moshesham/AI-Omniscient-Architect"
+Issues = "https://github.com/moshesham/AI-Omniscient-Architect/issues"
 
 [tool.setuptools]
 packages = ["omniscient_agents", "omniscient_agents.prompts"]

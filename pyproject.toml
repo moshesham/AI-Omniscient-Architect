@@ -5,53 +5,52 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "omniscient-architect"
 version = "0.2.0"
-description = "AI-powered code review and development assistant"
+description = "Meta-package for the Omniscient Architect monorepo"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
-    {name = "Data Science Analytical Handbook Team", email = "team@example.com"},
-]
-maintainers = [
-    {name = "AI Omniscient Architect Team", email = "ai-team@example.com"},
+    {name = "AI Omniscient Architect Team"},
 ]
 keywords = ["code-review", "ai", "development", "analysis", "github"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Software Development :: Testing",
 ]
-# Meta-package: dependencies on sub-packages
 dependencies = [
-    "omniscient-core>=0.1.0",
-    "omniscient-llm>=0.1.0",
-    "omniscient-agents>=0.1.0",
-    "omniscient-tools>=0.1.0",
-    "omniscient-github>=0.1.0",
-    "omniscient-api>=0.1.0",
+    "omniscient-core>=0.2.0,<0.3.0",
+    "omniscient-llm>=0.2.0,<0.3.0",
+    "omniscient-agents>=0.2.0,<0.3.0",
+    "omniscient-tools>=0.2.0,<0.3.0",
+    "omniscient-github>=0.2.0,<0.3.0",
+    "omniscient-api>=0.2.0,<0.3.0",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "build>=1.2.0",
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
     "black>=23.0.0",
     "isort>=5.12.0",
+    "flake8>=6.0.0",
     "mypy>=1.7.0",
     "pre-commit>=3.5.0",
+    "twine>=5.1.0",
 ]
 rag = [
-    "omniscient-rag>=0.1.0",
+    "omniscient-rag>=0.2.0,<0.3.0",
 ]
 full = [
-    "omniscient-rag>=0.1.0",
+    "omniscient-rag>=0.2.0,<0.3.0",
 ]
 
 [project.urls]
@@ -60,7 +59,6 @@ Repository = "https://github.com/moshesham/AI-Omniscient-Architect"
 Issues = "https://github.com/moshesham/AI-Omniscient-Architect/issues"
 Documentation = "https://github.com/moshesham/AI-Omniscient-Architect#readme"
 
-# Meta-package has no source code, just dependencies
 [tool.setuptools]
 packages = []
 
@@ -90,11 +88,10 @@ ignore_missing_imports = true
 minversion = "7.4"
 addopts = "-ra -q --strict-markers --strict-config"
 testpaths = ["tests"]
-python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
+asyncio_mode = "auto"
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",
     "slow: Slow running tests",
+    "asyncio: Async tests",
 ]

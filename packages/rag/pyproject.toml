@@ -4,28 +4,27 @@ build-backend = "hatchling.build"
 
 [project]
 name = "omniscient-rag"
-version = "0.1.0"
+version = "0.2.0"
 description = "RAG infrastructure for Omniscient Architect - embeddings, vector store, hybrid search"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 authors = [
-    { name = "Omniscient Architect Team" }
+    { name = "AI Omniscient Architect Team" }
 ]
 keywords = ["rag", "embeddings", "vector-search", "llm", "retrieval"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 
 dependencies = [
-    "omniscient-core",
-    "omniscient-llm",
+    "omniscient-core>=0.2.0,<0.3.0",
+    "omniscient-llm>=0.2.0,<0.3.0",
     "psycopg[binary]>=3.1.0",
     "psycopg-pool>=3.1.0",
     "pgvector>=0.2.0",
@@ -34,7 +33,13 @@ dependencies = [
 
 [project.optional-dependencies]
 ast = ["tree-sitter>=0.21.0", "tree-sitter-python>=0.21.0", "tree-sitter-javascript>=0.21.0"]
-dev = ["pytest>=7.0.0", "pytest-asyncio>=0.21.0"]
+dev = ["build>=1.2.0", "pytest>=7.0.0", "pytest-asyncio>=0.21.0", "twine>=5.1.0"]
+
+[project.urls]
+Homepage = "https://github.com/moshesham/AI-Omniscient-Architect"
+Documentation = "https://github.com/moshesham/AI-Omniscient-Architect/tree/main/packages/rag"
+Repository = "https://github.com/moshesham/AI-Omniscient-Architect"
+Issues = "https://github.com/moshesham/AI-Omniscient-Architect/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/omniscient_rag"]
