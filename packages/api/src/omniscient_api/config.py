@@ -61,7 +61,7 @@ class APIConfig(BaseSettings):
     api_prefix: str = "/api/v1"
     title: str = "Omniscient Architect API"
     description: str = "Code review and analysis API"
-    version: str = "0.1.0"
+    version: str = "0.2.0"
     
     # GitHub
     github_token: Optional[str] = Field(default=None, alias="GITHUB_TOKEN")

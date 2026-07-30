@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omniscient-github"
-version = "0.1.0"
+version = "0.2.0"
 description = "GitHub integration for Omniscient Architect - Repository analysis and PR workflows"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
 authors = [
-    {name = "Omniscient Architect Team"}
+    {name = "AI Omniscient Architect Team"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -25,7 +25,7 @@ classifiers = [
 keywords = ["github", "repository", "code-review", "git", "api"]
 
 dependencies = [
-    "omniscient-core>=0.1.0",
+    "omniscient-core>=0.2.0,<0.3.0",
     "httpx>=0.25.0",
     "PyGithub>=2.0.0",
     "gitpython>=3.1.0",
@@ -34,16 +34,18 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "build>=1.2.0",
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-httpx>=0.22.0",
+    "twine>=5.1.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/omniscient-architect/omniscient-architect"
-Documentation = "https://omniscient-architect.github.io/docs/packages/github"
-Repository = "https://github.com/omniscient-architect/omniscient-architect"
-Issues = "https://github.com/omniscient-architect/omniscient-architect/issues"
+Homepage = "https://github.com/moshesham/AI-Omniscient-Architect"
+Documentation = "https://github.com/moshesham/AI-Omniscient-Architect/tree/main/packages/github"
+Repository = "https://github.com/moshesham/AI-Omniscient-Architect"
+Issues = "https://github.com/moshesham/AI-Omniscient-Architect/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

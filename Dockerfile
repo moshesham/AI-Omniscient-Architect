@@ -10,6 +10,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /install
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+RUN python -m venv "$VIRTUAL_ENV"
 
 # Copy dependency files first (better layer caching)
 COPY requirements.txt pyproject.toml ./
@@ -17,14 +21,14 @@ COPY packages/ ./packages/
 
 # Install Python dependencies
 RUN python -m pip install --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir --target=/install -r requirements.txt \
-    && pip install --no-cache-dir --target=/install -e ./packages/core \
-    && pip install --no-cache-dir --target=/install -e ./packages/llm \
-    && pip install --no-cache-dir --target=/install -e ./packages/agents \
-    && pip install --no-cache-dir --target=/install -e ./packages/tools \
-    && pip install --no-cache-dir --target=/install -e ./packages/github \
-    && pip install --no-cache-dir --target=/install -e ./packages/api \
-    && pip install --no-cache-dir --target=/install -e ./packages/rag
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir ./packages/core \
+    && pip install --no-cache-dir ./packages/llm \
+    && pip install --no-cache-dir ./packages/tools \
+    && pip install --no-cache-dir ./packages/github \
+    && pip install --no-cache-dir ./packages/agents \
+    && pip install --no-cache-dir ./packages/api \
+    && pip install --no-cache-dir ./packages/rag
 
 
 # Final runtime stage
@@ -33,7 +37,8 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/app:/install \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH" \
     # Streamlit configuration
     STREAMLIT_GLOBAL_DEVELOPMENT_MODE=false \
     STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
@@ -51,19 +56,18 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Copy installed Python packages from builder
-COPY --from=builder /install /install
+# Copy installed Python environment from builder
+COPY --from=builder /opt/venv /opt/venv
 
 # Copy application code
 COPY web_app.py ./
 COPY config.yaml ./
 COPY packages/ ./packages/
-COPY src/ ./src/
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash --uid 1000 app \
     && mkdir -p /app/knowledge /app/.streamlit \
-    && chown -R app:app /app /install
+    && chown -R app:app /app /opt/venv
 
 # Copy Streamlit config
 COPY --chown=app:app <<EOF /app/.streamlit/config.toml

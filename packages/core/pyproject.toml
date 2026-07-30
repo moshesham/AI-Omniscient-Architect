@@ -4,20 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omniscient-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Core models, config, and utilities for Omniscient Architect"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
-    {name = "AI Omniscient Architect Team", email = "ai-team@example.com"},
+    {name = "AI Omniscient Architect Team"},
 ]
 keywords = ["code-analysis", "ai", "models", "config"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -32,10 +31,17 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "build>=1.2.0",
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
     "mypy>=1.7.0",
+    "twine>=5.1.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/moshesham/AI-Omniscient-Architect"
+Repository = "https://github.com/moshesham/AI-Omniscient-Architect"
+Issues = "https://github.com/moshesham/AI-Omniscient-Architect/issues"
 
 [tool.setuptools]
 packages = ["omniscient_core"]

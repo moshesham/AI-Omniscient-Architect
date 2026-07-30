@@ -1,5 +1,7 @@
 # Docker Setup and Deployment Guide
 
+> This document focuses on containerized application deployment. Package publishing, tag strategy, and PyPI automation are documented in [RELEASE.md](RELEASE.md).
+
 ## Overview
 
 This guide covers the improved Docker setup for the Omniscient Architect project, including optimizations, best practices, and deployment strategies.

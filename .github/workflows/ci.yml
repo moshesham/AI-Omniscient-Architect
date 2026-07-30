@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.11"
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -17,16 +23,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
+      - name: Install development dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install -r requirements-dev.txt
 
-      - name: Install sub-packages
+      - name: Install workspace packages
         run: |
-          # Install packages in dependency order
           pip install -e packages/core
           pip install -e packages/llm
           pip install -e packages/tools
@@ -41,3 +46,53 @@ jobs:
       - name: Run tests
         run: |
           pytest -q
+
+  package-validation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install packaging tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build all distributions
+        run: |
+          set -euo pipefail
+          python -m build
+          for pkg in core llm tools github agents api rag; do
+            python -m build "packages/$pkg"
+          done
+
+      - name: Validate built metadata
+        run: |
+          set -euo pipefail
+          twine check dist/*
+          for pkg in core llm tools github agents api rag; do
+            twine check "packages/$pkg"/dist/*
+          done
+
+      - name: Verify install from built artifacts
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/package-check
+          . /tmp/package-check/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install \
+            --find-links dist \
+            --find-links packages/core/dist \
+            --find-links packages/llm/dist \
+            --find-links packages/tools/dist \
+            --find-links packages/github/dist \
+            --find-links packages/agents/dist \
+            --find-links packages/api/dist \
+            --find-links packages/rag/dist \
+            omniscient-architect[full]==0.2.0

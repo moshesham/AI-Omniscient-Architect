@@ -109,4 +109,4 @@ __all__ = [
     "get_anthropic_provider",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

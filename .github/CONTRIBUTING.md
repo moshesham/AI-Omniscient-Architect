@@ -6,7 +6,7 @@ Thank you for your interest in contributing! This document provides guidelines f
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.10+
 - [Ollama](https://ollama.ai) installed
 - Git
 
@@ -21,11 +21,11 @@ cd AI-Omniscient-Architect
 python -m venv .venv
 source .venv/bin/activate  # or .venv\Scripts\activate on Windows
 
-# Install dependencies
-pip install -r requirements.txt
+# Install developer tooling
+pip install -r requirements-dev.txt
 
-# Install dev dependencies
-pip install pytest black isort mypy
+# Install workspace packages
+pip install -e packages/core -e packages/llm -e packages/tools -e packages/github -e packages/agents -e packages/api -e packages/rag
 
 # Pull a model for testing
 ollama pull qwen2.5-coder:1.5b
@@ -58,12 +58,16 @@ mypy packages/
 ### Testing
 
 ```bash
-# Run package tests
-python scripts/test_packages.py
-
-# Run local analysis test
-python scripts/test_local_analysis.py
+pytest -q
+python -m build
+for pkg in core llm tools github agents api rag; do python -m build "packages/$pkg"; done
 ```
+
+Local validation should mirror CI:
+
+- `pytest -q`
+- `python -m build` plus builds for each package under `packages/`
+- `twine check dist/* packages/*/dist/*`
 
 ## Pull Request Process
 
@@ -79,6 +83,7 @@ python scripts/test_local_analysis.py
 - [ ] Tests pass locally
 - [ ] Documentation updated (if needed)
 - [ ] Commit messages are clear and descriptive
+- [ ] Packaging and release changes follow [RELEASE.md](../RELEASE.md)
 
 ## Package Structure
 
@@ -89,7 +94,8 @@ packages/
 ├── agents/     # Analysis agents
 ├── tools/      # Utility tools
 ├── github/     # GitHub integration
-└── api/        # REST/GraphQL API
+├── api/        # REST/GraphQL API
+└── rag/        # Retrieval and knowledge pipeline
 ```
 
 ### Adding a New LLM Provider
@@ -110,6 +116,7 @@ packages/
 
 - Open an [issue](https://github.com/moshesham/AI-Omniscient-Architect/issues)
 - Check existing discussions
+- See [RELEASE.md](../RELEASE.md) for package publishing and rollback guidance
 
 ## License
 
