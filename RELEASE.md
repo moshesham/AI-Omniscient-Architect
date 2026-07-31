@@ -42,7 +42,7 @@ twine check dist/* packages/*/dist/*
 ## Canonical publishing workflow
 
 - Workflow file: `.github/workflows/publish.yml`
-- Publishing method: **PyPI trusted publishing with GitHub OIDC**
+- Publishing method: **PyPI trusted publishing with GitHub OIDC** (preferred) or `PYPI_API_TOKEN` GitHub secret fallback
 - Manual dry runs are supported through `workflow_dispatch`
 
 ### Tag formats
@@ -62,6 +62,14 @@ Configure PyPI to trust this GitHub repository/workflow instead of storing a lon
    - **Workflow**: `publish.yml`
    - **Environment**: `pypi`
 4. Protect the GitHub `pypi` environment as needed before allowing publish jobs
+
+## PyPI API token fallback
+
+If trusted publishing is not available yet, the workflow also supports a GitHub secret named `PYPI_API_TOKEN`.
+
+1. Add `PYPI_API_TOKEN` as a repository secret or `pypi` environment secret in GitHub
+2. Keep the workflow file unchanged; the publish job automatically prefers the secret when present
+3. Never commit the token to the repository, workflow YAML, or documentation
 
 ## Container publishing workflow
 

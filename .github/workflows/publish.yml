@@ -129,6 +129,39 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine
 
+      - name: Validate release metadata
+        run: |
+          python - <<'PY'
+          import pathlib
+          import tomllib
+
+          package_path = pathlib.Path("${{ needs.prepare.outputs.package_path }}")
+          pyproject_path = package_path / "pyproject.toml"
+
+          if not pyproject_path.exists():
+              raise SystemExit(f"Missing package metadata file: {pyproject_path}")
+
+          data = tomllib.loads(pyproject_path.read_text())
+          actual_name = data["project"]["name"]
+          actual_version = data["project"]["version"]
+          expected_name = "${{ needs.prepare.outputs.package }}"
+          expected_version = "${{ needs.prepare.outputs.version }}"
+
+          if actual_name != expected_name:
+              raise SystemExit(
+                  f"Package name mismatch: workflow resolved {expected_name!r}, "
+                  f"but {pyproject_path} declares {actual_name!r}"
+              )
+
+          if actual_version != expected_version:
+              raise SystemExit(
+                  f"Version mismatch: workflow resolved {expected_version!r}, "
+                  f"but {pyproject_path} declares {actual_version!r}"
+              )
+
+          print(f"Validated {actual_name} version {actual_version}")
+          PY
+
       - name: Build package
         run: |
           cd ${{ needs.prepare.outputs.package_path }}
@@ -155,6 +188,8 @@ jobs:
       id-token: write
     environment:
       name: pypi
+    env:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -162,7 +197,15 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Publish distributions
+      - name: Publish distributions with API token
+        if: env.PYPI_API_TOKEN != ''
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Publish distributions with trusted publishing
+        if: env.PYPI_API_TOKEN == ''
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
